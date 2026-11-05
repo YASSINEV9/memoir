@@ -23,25 +23,52 @@ class ArchiveRepository {
     final filter = query.trim();
     final rows = await db.query(
       'archive_items',
-      where:
-          [
-            if (collection != 'all') 'collection_id = ?',
-            if (filter.isNotEmpty)
-              '(body LIKE ? OR filename LIKE ? OR mime_type LIKE ?)',
-          ].join(' AND ').isEmpty
-          ? null
-          : [
-              if (collection != 'all') 'collection_id = ?',
-              if (filter.isNotEmpty)
-                '(body LIKE ? OR filename LIKE ? OR mime_type LIKE ?)',
-            ].join(' AND '),
+      where: [
+        'deleted_at IS NULL',
+        if (collection != 'all') 'collection_id = ?',
+        if (filter.isNotEmpty)
+          '(body LIKE ? OR filename LIKE ? OR mime_type LIKE ?)',
+      ].join(' AND '),
       whereArgs: [
         if (collection != 'all') collection,
         if (filter.isNotEmpty) ...['%$filter%', '%$filter%', '%$filter%'],
       ],
       orderBy: 'position DESC',
     );
-    return rows.map(ArchiveItem.fromMap).toList();
+    return _withBackups(rows);
+  }
+
+  /// Items in Recently deleted, most recently deleted first.
+  Future<List<ArchiveItem>> trash() async {
+    final db = await _source.database;
+    final rows = await db.query(
+      'archive_items',
+      where: 'deleted_at IS NOT NULL',
+      orderBy: 'deleted_at DESC',
+    );
+    return _withBackups(rows);
+  }
+
+  /// The accounts each item is backed up to, by item id.
+  Future<Map<String, Set<String>>> backupsByItem() async {
+    final db = await _source.database;
+    final accounts = <String, Set<String>>{};
+    for (final row in await db.query('item_backups')) {
+      (accounts[row['item_id']! as String] ??= {}).add(
+        row['account']! as String,
+      );
+    }
+    return accounts;
+  }
+
+  Future<List<ArchiveItem>> _withBackups(
+    List<Map<String, Object?>> rows,
+  ) async {
+    final accounts = await backupsByItem();
+    return [
+      for (final row in rows)
+        ArchiveItem.fromMap(row, backedUpTo: accounts[row['id']] ?? const {}),
+    ];
   }
 
   Future<List<ArchiveCollection>> collections() async {
@@ -57,7 +84,8 @@ class ArchiveRepository {
     final db = await _source.database;
     final rows = await db.rawQuery('''SELECT a.*, s.cnt FROM archive_items a
       JOIN (SELECT collection_id, MAX(position) AS top, COUNT(*) AS cnt
-            FROM archive_items GROUP BY collection_id) s
+            FROM archive_items WHERE deleted_at IS NULL
+            GROUP BY collection_id) s
       ON a.collection_id = s.collection_id AND a.position = s.top''');
     return {
       for (final row in rows)
@@ -68,11 +96,53 @@ class ArchiveRepository {
     };
   }
 
+  /// Moves [item] to Recently deleted; [purgeExpired] removes it later.
+  Future<void> moveToTrash(ArchiveItem item) async {
+    final db = await _source.database;
+    await db.update(
+      'archive_items',
+      {'deleted_at': DateTime.now().millisecondsSinceEpoch},
+      where: 'id = ?',
+      whereArgs: [item.id],
+    );
+  }
+
+  Future<void> restoreFromTrash(ArchiveItem item) async {
+    final db = await _source.database;
+    await db.update(
+      'archive_items',
+      {'deleted_at': null},
+      where: 'id = ?',
+      whereArgs: [item.id],
+    );
+  }
+
+  /// Removes [item] and its file from this device for good. Copies in
+  /// Google Drive are left alone.
   Future<void> delete(ArchiveItem item) async {
     final db = await _source.database;
-    await db.delete('archive_items', where: 'id = ?', whereArgs: [item.id]);
+    await db.transaction((txn) async {
+      await txn.delete('archive_items', where: 'id = ?', whereArgs: [item.id]);
+      await txn.delete(
+        'item_backups',
+        where: 'item_id = ?',
+        whereArgs: [item.id],
+      );
+    });
     final path = item.localPath;
     if (path != null && await File(path).exists()) await File(path).delete();
+  }
+
+  /// Deletes what has been in Recently deleted longer than [keep].
+  Future<int> purgeExpired({Duration keep = const Duration(days: 30)}) async {
+    final cutoff = DateTime.now().subtract(keep).millisecondsSinceEpoch;
+    final expired = (await trash()).where(
+      (item) => (item.deletedAt ?? cutoff) < cutoff,
+    );
+    for (final item in expired) {
+      await delete(item);
+    }
+    return expired.length;
   }
 
   Future<void> createCollection(String name) async {
@@ -253,6 +323,7 @@ class ArchiveRepository {
     required int createdAt,
     required String driveId,
     required String driveAccount,
+    Map<String, String> backups = const {},
     String? body,
     String? filename,
     String? mimeType,
@@ -284,7 +355,31 @@ class ArchiveRepository {
         'drive_id': driveId,
         'drive_account': driveAccount,
       }, conflictAlgorithm: ConflictAlgorithm.ignore);
+      for (final MapEntry(key: account, value: fileId) in {
+        driveAccount: driveId,
+        ...backups,
+      }.entries) {
+        await txn.insert('item_backups', {
+          'item_id': id,
+          'account': account,
+          'drive_id': fileId,
+        }, conflictAlgorithm: ConflictAlgorithm.replace);
+      }
     });
+  }
+
+  /// Records that [itemId] already has a copy in [account]'s Drive.
+  Future<void> recordBackup(
+    String itemId,
+    String account,
+    String driveId,
+  ) async {
+    final db = await _source.database;
+    await db.insert('item_backups', {
+      'item_id': itemId,
+      'account': account,
+      'drive_id': driveId,
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
   Future<void> markBackedUp(
@@ -293,12 +388,20 @@ class ArchiveRepository {
     String account,
   ) async {
     final db = await _source.database;
-    await db.update(
-      'archive_items',
-      {'drive_id': driveId, 'drive_account': account},
-      where: 'id = ?',
-      whereArgs: [item.id],
-    );
+    await db.transaction((txn) async {
+      // The item keeps the latest copy for "Open in Google Drive".
+      await txn.update(
+        'archive_items',
+        {'drive_id': driveId, 'drive_account': account},
+        where: 'id = ?',
+        whereArgs: [item.id],
+      );
+      await txn.insert('item_backups', {
+        'item_id': item.id,
+        'account': account,
+        'drive_id': driveId,
+      }, conflictAlgorithm: ConflictAlgorithm.replace);
+    });
   }
 
   Future<void> setFlag(ArchiveItem item, String flag, bool value) async {

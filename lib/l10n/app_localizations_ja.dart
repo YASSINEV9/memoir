@@ -568,4 +568,68 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get updateCheckFailed => 'アップデートを確認できませんでした。インターネット接続を確認してください。';
+
+  @override
+  String get addAccount => '別の Google アカウントを追加';
+
+  @override
+  String get removeAccount => 'アカウントを削除';
+
+  @override
+  String removeAccountTitle(String email) {
+    return '$email を削除しますか？';
+  }
+
+  @override
+  String get removeAccountBody =>
+      'Memoir はこのアカウントへのバックアップを停止します。すでにドライブにあるファイルはそのまま残ります。';
+
+  @override
+  String get backupToAllAccounts =>
+      'バックアップは上のすべてのアカウントに保存されます。どれか一つを失っても思い出は安全です。';
+
+  @override
+  String get shareSaveTo => 'Memoir に保存';
+
+  @override
+  String shareItemsCount(int count) {
+    return '$count 件';
+  }
+
+  @override
+  String sharedSaved(String name) {
+    return '$name に保存しました';
+  }
+
+  @override
+  String get recentlyDeleted => '最近削除した項目';
+
+  @override
+  String get recentlyDeletedSubtitle => '削除した項目はここに 30 日間保管されます';
+
+  @override
+  String get trashEmpty => '何もありません';
+
+  @override
+  String get deleteForever => '完全に削除';
+
+  @override
+  String get emptyTrash => '空にする';
+
+  @override
+  String get emptyTrashTitle => 'ここにあるものをすべて完全に削除しますか？';
+
+  @override
+  String get emptyTrashBody => 'このスマホから削除されます。Google ドライブのコピーは残ります。';
+
+  @override
+  String deletedOn(String date) {
+    return '$date に削除';
+  }
+
+  @override
+  String get movedToTrash => '最近削除した項目に移動しました';
+
+  @override
+  String get undo => '元に戻す';
 }

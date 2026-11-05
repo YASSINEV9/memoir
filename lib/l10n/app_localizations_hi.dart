@@ -597,4 +597,76 @@ class AppLocalizationsHi extends AppLocalizations {
   @override
   String get updateCheckFailed =>
       'अपडेट नहीं जाँच सके। अपना इंटरनेट कनेक्शन जाँचें।';
+
+  @override
+  String get addAccount => 'एक और Google खाता जोड़ें';
+
+  @override
+  String get removeAccount => 'खाता हटाएँ';
+
+  @override
+  String removeAccountTitle(String email) {
+    return '$email हटाएँ?';
+  }
+
+  @override
+  String get removeAccountBody =>
+      'Memoir इस खाते में बैकअप लेना बंद कर देगा। उसके Drive में पहले से मौजूद फ़ाइलें वहीं रहेंगी।';
+
+  @override
+  String get backupToAllAccounts =>
+      'हर बैकअप ऊपर के सभी खातों में जाता है, इसलिए किसी एक खाते के खो जाने पर भी आपकी यादें सुरक्षित रहती हैं।';
+
+  @override
+  String get shareSaveTo => 'Memoir में सहेजें';
+
+  @override
+  String shareItemsCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count चीज़ें',
+      one: '1 चीज़',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String sharedSaved(String name) {
+    return '$name में सहेजा गया';
+  }
+
+  @override
+  String get recentlyDeleted => 'हाल में हटाए गए';
+
+  @override
+  String get recentlyDeletedSubtitle =>
+      'हटाई गई चीज़ें यहाँ 30 दिन तक रहती हैं';
+
+  @override
+  String get trashEmpty => 'यहाँ कुछ नहीं है';
+
+  @override
+  String get deleteForever => 'हमेशा के लिए हटाएँ';
+
+  @override
+  String get emptyTrash => 'खाली करें';
+
+  @override
+  String get emptyTrashTitle => 'यहाँ की सब चीज़ें हमेशा के लिए हटाएँ?';
+
+  @override
+  String get emptyTrashBody =>
+      'ये इस फ़ोन से हट जाएँगी। Google Drive में मौजूद कॉपियाँ रहेंगी।';
+
+  @override
+  String deletedOn(String date) {
+    return '$date को हटाया गया';
+  }
+
+  @override
+  String get movedToTrash => 'हाल में हटाए गए में भेजा गया';
+
+  @override
+  String get undo => 'पहले जैसा करें';
 }

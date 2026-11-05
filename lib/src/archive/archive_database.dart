@@ -12,7 +12,7 @@ class ArchiveDatabase {
     final directory = await getApplicationDocumentsDirectory();
     _database = await openDatabase(
       p.join(directory.path, 'memory_vault.db'),
-      version: 2,
+      version: 3,
       onCreate: (db, version) async {
         await db.execute('''CREATE TABLE collections (
           id TEXT PRIMARY KEY, name TEXT NOT NULL UNIQUE, position INTEGER NOT NULL,
@@ -23,8 +23,9 @@ class ArchiveDatabase {
           size INTEGER NOT NULL DEFAULT 0, created_at INTEGER NOT NULL,
           position INTEGER NOT NULL UNIQUE, favorite INTEGER NOT NULL DEFAULT 0,
           pinned INTEGER NOT NULL DEFAULT 0, group_id TEXT, drive_id TEXT,
-          drive_account TEXT,
+          drive_account TEXT, deleted_at INTEGER,
           FOREIGN KEY(collection_id) REFERENCES collections(id))''');
+        await _createBackupsTable(db);
         await db.execute(
           'CREATE INDEX archive_created_idx ON archive_items(created_at, position)',
         );
@@ -66,9 +67,26 @@ class ArchiveDatabase {
             'ALTER TABLE archive_items ADD COLUMN drive_account TEXT',
           );
         }
+        if (oldVersion < 3) {
+          // Recently deleted, and backups to more than one Google account.
+          await db.execute(
+            'ALTER TABLE archive_items ADD COLUMN deleted_at INTEGER',
+          );
+          await _createBackupsTable(db);
+          await db.execute('''INSERT OR IGNORE INTO item_backups
+            (item_id, account, drive_id)
+            SELECT id, drive_account, drive_id FROM archive_items
+            WHERE drive_id IS NOT NULL AND drive_account IS NOT NULL''');
+        }
       },
       onConfigure: (db) async => db.execute('PRAGMA foreign_keys = ON'),
     );
     return _database!;
   }
+
+  /// One row per item and Google account it was uploaded to.
+  static Future<void> _createBackupsTable(Database db) =>
+      db.execute('''CREATE TABLE item_backups (
+      item_id TEXT NOT NULL, account TEXT NOT NULL, drive_id TEXT NOT NULL,
+      PRIMARY KEY (item_id, account))''');
 }

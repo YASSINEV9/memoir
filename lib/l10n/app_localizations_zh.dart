@@ -560,4 +560,66 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get updateCheckFailed => '无法检查更新。请检查网络连接。';
+
+  @override
+  String get addAccount => '添加另一个 Google 账号';
+
+  @override
+  String get removeAccount => '移除账号';
+
+  @override
+  String removeAccountTitle(String email) {
+    return '移除 $email？';
+  }
+
+  @override
+  String get removeAccountBody => 'Memoir 将不再备份到此账号。已在其云端硬盘中的文件会保留。';
+
+  @override
+  String get backupToAllAccounts => '每次备份都会保存到上面所有账号，即使丢失其中一个账号，你的回忆也依然安全。';
+
+  @override
+  String get shareSaveTo => '保存到 Memoir';
+
+  @override
+  String shareItemsCount(int count) {
+    return '$count 项';
+  }
+
+  @override
+  String sharedSaved(String name) {
+    return '已保存到 $name';
+  }
+
+  @override
+  String get recentlyDeleted => '最近删除';
+
+  @override
+  String get recentlyDeletedSubtitle => '删除的内容会在这里保留 30 天';
+
+  @override
+  String get trashEmpty => '这里什么都没有';
+
+  @override
+  String get deleteForever => '永久删除';
+
+  @override
+  String get emptyTrash => '清空';
+
+  @override
+  String get emptyTrashTitle => '要永久删除这里的所有内容吗？';
+
+  @override
+  String get emptyTrashBody => '它们将从这台手机上移除。Google 云端硬盘中的副本会保留。';
+
+  @override
+  String deletedOn(String date) {
+    return '删除于 $date';
+  }
+
+  @override
+  String get movedToTrash => '已移到最近删除';
+
+  @override
+  String get undo => '撤销';
 }

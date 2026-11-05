@@ -7,27 +7,57 @@ import 'package:path_provider/path_provider.dart';
 import '../archive/archive_repository.dart';
 import 'google_drive_provider.dart';
 
-/// Items in the user's Memoir folder on Drive that are not on this phone,
-/// for example after reinstalling the app.
-Future<List<RemoteBackupItem>> findRestorableItems(
-  GoogleDriveProvider drive,
+/// What can be brought back from the connected accounts.
+class RestorePlan {
+  const RestorePlan(this.items, this.copies);
+  static const empty = RestorePlan([], {});
+
+  /// Each missing item once, with an account to download it from.
+  final List<(GoogleDriveProvider, RemoteBackupItem)> items;
+
+  /// Every account's copy of each missing item: {itemId: {email: fileId}}.
+  final Map<String, Map<String, String>> copies;
+
+  int get length => items.length;
+  bool get isEmpty => items.isEmpty;
+}
+
+/// Items in the connected accounts' Memoir folders that are not on this
+/// phone, for example after reinstalling the app. Copies of items that are
+/// on the phone are recorded too, so they are not uploaded again.
+Future<RestorePlan> findRestorableItems(
+  List<GoogleDriveProvider> drives,
   ArchiveRepository repository,
 ) async {
   final local = await repository.itemIds();
-  final remote = await drive.backupItems();
-  return remote.where((item) => !local.contains(item.itemId)).toList();
+  final recorded = await repository.backupsByItem();
+  final items = <String, (GoogleDriveProvider, RemoteBackupItem)>{};
+  final copies = <String, Map<String, String>>{};
+  for (final drive in drives) {
+    final email = drive.email!;
+    for (final remote in await drive.backupItems()) {
+      if (local.contains(remote.itemId)) {
+        if (!(recorded[remote.itemId]?.contains(email) ?? false)) {
+          await repository.recordBackup(remote.itemId, email, remote.fileId);
+        }
+        continue;
+      }
+      items.putIfAbsent(remote.itemId, () => (drive, remote));
+      (copies[remote.itemId] ??= {})[email] = remote.fileId;
+    }
+  }
+  return RestorePlan(items.values.toList(), copies);
 }
 
-/// Downloads [items] and puts each back in its chat with its original id,
-/// date and album, saved the same way as when it was first added.
+/// Downloads what [plan] found and puts each item back in its chat with its
+/// original id, date and album, saved the same way as when first added.
 Future<int> restoreItems(
-  GoogleDriveProvider drive,
-  ArchiveRepository repository,
-  List<RemoteBackupItem> items, {
+  RestorePlan plan,
+  ArchiveRepository repository, {
   required String fallbackCollectionName,
   void Function(int done, int total)? onProgress,
 }) async {
-  final account = drive.email ?? '';
+  final items = plan.items;
   final docs = await getApplicationDocumentsDirectory();
   final attachments = Directory(p.join(docs.path, 'attachments'));
   await attachments.create(recursive: true);
@@ -39,7 +69,7 @@ Future<int> restoreItems(
   onProgress?.call(0, items.length);
   Future<void> worker() async {
     while (next < items.length) {
-      final item = items[next++];
+      final (drive, item) = items[next++];
       try {
         ready.add(await _download(drive, repository, item, attachments.path));
       } on FormatException {
@@ -63,7 +93,8 @@ Future<int> restoreItems(
       type: r.type,
       createdAt: r.createdAt,
       driveId: r.driveId,
-      driveAccount: account,
+      driveAccount: r.account,
+      backups: plan.copies[r.id] ?? const {},
       body: r.body,
       filename: r.filename,
       mimeType: r.extension,
@@ -93,6 +124,7 @@ Future<_Restored> _download(
     return _Restored(
       id: item.itemId,
       driveId: item.fileId,
+      account: drive.email!,
       collection: json['collection'] as String? ?? 'personal',
       collectionName: props['mvCollectionName'],
       type: json['type'] as String? ?? 'text',
@@ -114,6 +146,7 @@ Future<_Restored> _download(
   return _Restored(
     id: item.itemId,
     driveId: item.fileId,
+    account: drive.email!,
     collection: props['mvCollection'] ?? 'personal',
     collectionName: props['mvCollectionName'],
     type: props['mvType'] ?? repository.typeFor(item.name),
@@ -134,6 +167,7 @@ class _Restored {
   const _Restored({
     required this.id,
     required this.driveId,
+    required this.account,
     required this.collection,
     required this.type,
     required this.createdAt,
@@ -149,6 +183,7 @@ class _Restored {
   });
   final String id;
   final String driveId;
+  final String account;
   final String collection;
   final String? collectionName;
   final String type;

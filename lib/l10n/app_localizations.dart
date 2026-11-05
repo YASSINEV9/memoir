@@ -1093,6 +1093,114 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Could not check for updates. Check your internet connection.'**
   String get updateCheckFailed;
+
+  /// No description provided for @addAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Add another Google account'**
+  String get addAccount;
+
+  /// No description provided for @removeAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove account'**
+  String get removeAccount;
+
+  /// No description provided for @removeAccountTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove {email}?'**
+  String removeAccountTitle(String email);
+
+  /// No description provided for @removeAccountBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Memoir stops backing up to this account. Files already in its Drive stay there.'**
+  String get removeAccountBody;
+
+  /// No description provided for @backupToAllAccounts.
+  ///
+  /// In en, this message translates to:
+  /// **'Each backup goes to every account above, so your memories stay safe even if you lose one of them.'**
+  String get backupToAllAccounts;
+
+  /// No description provided for @shareSaveTo.
+  ///
+  /// In en, this message translates to:
+  /// **'Save to Memoir'**
+  String get shareSaveTo;
+
+  /// No description provided for @shareItemsCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 item} other{{count} items}}'**
+  String shareItemsCount(int count);
+
+  /// No description provided for @sharedSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved to {name}'**
+  String sharedSaved(String name);
+
+  /// No description provided for @recentlyDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Recently deleted'**
+  String get recentlyDeleted;
+
+  /// No description provided for @recentlyDeletedSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Deleted items are kept here for 30 days'**
+  String get recentlyDeletedSubtitle;
+
+  /// No description provided for @trashEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing here'**
+  String get trashEmpty;
+
+  /// No description provided for @deleteForever.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete forever'**
+  String get deleteForever;
+
+  /// No description provided for @emptyTrash.
+  ///
+  /// In en, this message translates to:
+  /// **'Empty'**
+  String get emptyTrash;
+
+  /// No description provided for @emptyTrashTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete everything here forever?'**
+  String get emptyTrashTitle;
+
+  /// No description provided for @emptyTrashBody.
+  ///
+  /// In en, this message translates to:
+  /// **'They are removed from this phone. Copies in Google Drive stay.'**
+  String get emptyTrashBody;
+
+  /// No description provided for @deletedOn.
+  ///
+  /// In en, this message translates to:
+  /// **'Deleted {date}'**
+  String deletedOn(String date);
+
+  /// No description provided for @movedToTrash.
+  ///
+  /// In en, this message translates to:
+  /// **'Moved to Recently deleted'**
+  String get movedToTrash;
+
+  /// No description provided for @undo.
+  ///
+  /// In en, this message translates to:
+  /// **'Undo'**
+  String get undo;
 }
 
 class _AppLocalizationsDelegate

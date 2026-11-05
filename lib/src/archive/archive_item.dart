@@ -15,6 +15,8 @@ class ArchiveItem {
     this.groupId,
     this.driveId,
     this.driveAccount,
+    this.backedUpTo = const {},
+    this.deletedAt,
   });
 
   final String id;
@@ -37,7 +39,16 @@ class ArchiveItem {
   final String? driveId;
   final String? driveAccount;
 
-  factory ArchiveItem.fromMap(Map<String, Object?> row) => ArchiveItem(
+  /// Every Google account this item is backed up to.
+  final Set<String> backedUpTo;
+
+  /// When it was moved to Recently deleted; null while it is in a chat.
+  final int? deletedAt;
+
+  factory ArchiveItem.fromMap(
+    Map<String, Object?> row, {
+    Set<String> backedUpTo = const {},
+  }) => ArchiveItem(
     id: row['id']! as String,
     collection: row['collection_id']! as String,
     type: row['type']! as String,
@@ -53,6 +64,8 @@ class ArchiveItem {
     groupId: row['group_id'] as String?,
     driveId: row['drive_id'] as String?,
     driveAccount: row['drive_account'] as String?,
+    backedUpTo: backedUpTo,
+    deletedAt: row['deleted_at'] as int?,
   );
 }
 

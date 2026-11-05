@@ -626,4 +626,76 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get updateCheckFailed =>
       'Impossible de rechercher des mises à jour. Vérifiez votre connexion Internet.';
+
+  @override
+  String get addAccount => 'Ajouter un autre compte Google';
+
+  @override
+  String get removeAccount => 'Retirer le compte';
+
+  @override
+  String removeAccountTitle(String email) {
+    return 'Retirer $email ?';
+  }
+
+  @override
+  String get removeAccountBody =>
+      'Memoir arrête de sauvegarder sur ce compte. Les fichiers déjà dans son Drive y restent.';
+
+  @override
+  String get backupToAllAccounts =>
+      'Chaque sauvegarde va vers tous les comptes ci-dessus : vos souvenirs restent en sécurité même si vous en perdez un.';
+
+  @override
+  String get shareSaveTo => 'Enregistrer dans Memoir';
+
+  @override
+  String shareItemsCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count éléments',
+      one: '1 élément',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String sharedSaved(String name) {
+    return 'Enregistré dans $name';
+  }
+
+  @override
+  String get recentlyDeleted => 'Récemment supprimés';
+
+  @override
+  String get recentlyDeletedSubtitle =>
+      'Les éléments supprimés sont conservés ici 30 jours';
+
+  @override
+  String get trashEmpty => 'Rien ici';
+
+  @override
+  String get deleteForever => 'Supprimer définitivement';
+
+  @override
+  String get emptyTrash => 'Vider';
+
+  @override
+  String get emptyTrashTitle => 'Tout supprimer définitivement ?';
+
+  @override
+  String get emptyTrashBody =>
+      'Ils sont retirés de ce téléphone. Les copies dans Google Drive restent.';
+
+  @override
+  String deletedOn(String date) {
+    return 'Supprimé le $date';
+  }
+
+  @override
+  String get movedToTrash => 'Déplacé dans Récemment supprimés';
+
+  @override
+  String get undo => 'Annuler';
 }

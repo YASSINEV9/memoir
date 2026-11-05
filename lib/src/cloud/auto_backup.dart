@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
@@ -10,6 +11,7 @@ import 'package:workmanager/workmanager.dart';
 import '../archive/archive_database.dart';
 import '../archive/archive_item.dart';
 import '../archive/archive_repository.dart';
+import 'drive_accounts.dart';
 import 'google_drive_provider.dart';
 
 const autoBackupTaskName = 'memoryVaultDailyBackup';
@@ -21,10 +23,13 @@ const _minutesKey = 'automatic_backup_minutes';
 const _nextRunKey = 'automatic_backup_next_run';
 const _lastSuccessKey = 'backup_last_success';
 const _lastProblemKey = 'backup_last_problem';
+
+/// Problems of the last backup, per account: {email: code}.
+const _problemsKey = 'backup_problems';
 const _runningUntilKey = 'backup_running_until';
 
-/// The account whose Drive files all carry the restore details already.
-const _restoreInfoKey = 'backup_restore_info_account';
+/// Accounts whose Drive files all carry the restore details already.
+const _restoreInfoKey = 'backup_restore_info_accounts';
 
 /// How long one backup holds its claim. Refreshed after every uploaded item,
 /// and it expires by itself if Android stops the task partway through.
@@ -40,9 +45,7 @@ class BackupBusy implements Exception {
 
 /// Items not yet in the Drive of [account].
 List<ArchiveItem> pendingBackupItems(List<ArchiveItem> items, String account) =>
-    items
-        .where((item) => item.driveId == null || item.driveAccount != account)
-        .toList();
+    items.where((item) => !item.backedUpTo.contains(account)).toList();
 
 /// The next time the clock shows [hour]:[minute], strictly after [now].
 DateTime nextBackupTime(int hour, int minute, DateTime now) {
@@ -91,7 +94,8 @@ Future<BackupResult> runBackup(
     var skipped = 0;
     // Files uploaded by older versions lack the details a restore needs;
     // list them once per account to add those details.
-    final backfill = prefs.getString(_restoreInfoKey) != account;
+    final backfilled = prefs.getStringList(_restoreInfoKey) ?? const [];
+    final backfill = !backfilled.contains(account);
     final known = pending.isNotEmpty || backfill
         ? await drive.backedUpItems()
         : const <String, String>{};
@@ -137,10 +141,10 @@ Future<BackupResult> runBackup(
       }
 
       await Future.wait(List.generate(4, (_) => worker()));
-      await prefs.setString(_restoreInfoKey, account);
+      await prefs.setStringList(_restoreInfoKey, [...backfilled, account]);
     }
     await prefs.setInt(_lastSuccessKey, DateTime.now().millisecondsSinceEpoch);
-    await prefs.remove(_lastProblemKey);
+    await _setProblem(prefs, account, null);
     return BackupResult(
       uploaded: uploaded,
       skipped: skipped,
@@ -158,13 +162,36 @@ class BackupSchedule {
     required this.hour,
     required this.minute,
     this.lastSuccess,
-    this.lastProblem,
+    this.problems = const {},
   });
   final bool enabled;
   final int hour;
   final int minute;
   final DateTime? lastSuccess;
-  final String? lastProblem;
+
+  /// Problem codes of the last backup by account email.
+  final Map<String, String> problems;
+}
+
+Map<String, String> _problems(SharedPreferences prefs) {
+  final saved = prefs.getString(_problemsKey);
+  if (saved != null) {
+    return (jsonDecode(saved) as Map<String, dynamic>).cast<String, String>();
+  }
+  // Saved without an account by versions before 1.3.0.
+  final legacy = prefs.getString(_lastProblemKey);
+  return legacy == null ? {} : {'': legacy};
+}
+
+Future<void> _setProblem(
+  SharedPreferences prefs,
+  String account,
+  String? code,
+) async {
+  final problems = _problems(prefs)..remove('');
+  code == null ? problems.remove(account) : problems[account] = code;
+  await prefs.setString(_problemsKey, jsonEncode(problems));
+  await prefs.remove(_lastProblemKey);
 }
 
 Future<BackupSchedule> loadBackupSchedule() async {
@@ -180,7 +207,7 @@ Future<BackupSchedule> loadBackupSchedule() async {
     lastSuccess: lastSuccess == null
         ? null
         : DateTime.fromMillisecondsSinceEpoch(lastSuccess),
-    lastProblem: prefs.getString(_lastProblemKey),
+    problems: _problems(prefs),
   );
 }
 
@@ -249,45 +276,48 @@ Future<void> resumeAutomaticBackup() async {
   }
 }
 
-/// Runs the daily backup. Returns false when it should be retried later.
+/// Runs the daily backup to every connected account. Returns false when it
+/// should be retried later.
 Future<bool> runAutomaticBackup() async {
   final prefs = await SharedPreferences.getInstance();
   await prefs.reload();
   if (!(prefs.getBool(_enabledKey) ?? false)) return true;
-  final drive = GoogleDriveProvider();
   var finished = true;
-  // Saved as a code; the Drive screen shows it in the app's language.
-  Future<void> problem(String code) => prefs.setString(_lastProblemKey, code);
-  try {
-    if (await drive.restore()) {
-      await runBackup(drive, ArchiveRepository(ArchiveDatabase.instance));
-    } else {
+  for (final email in await DriveAccounts.savedEmails()) {
+    final drive = GoogleDriveProvider(email: email);
+    // Saved as a code; the Drive screen shows it in the app's language.
+    Future<void> problem(String code) => _setProblem(prefs, email, code);
+    try {
+      if (await drive.restore()) {
+        await runBackup(drive, ArchiveRepository(ArchiveDatabase.instance));
+      } else {
+        await problem('reconnect');
+      }
+    } on DriveReconnectRequired {
       await problem('reconnect');
+    } on BackupBusy {
+      finished = false;
+    } on SocketException {
+      await problem('offline');
+      finished = false;
+    } on TimeoutException {
+      await problem('timeout');
+      finished = false;
+    } on http.ClientException {
+      await problem('connection');
+      finished = false;
+    } on HttpException catch (error) {
+      await problem('retry:$error');
+      finished = false;
+    } on GoogleSignInException {
+      await problem('google');
+      finished = false;
+    } catch (error) {
+      // Retrying right away will not help, for example when Drive is full.
+      await problem('error:$error');
+    } finally {
+      drive.dispose();
     }
-  } on DriveReconnectRequired {
-    await problem('reconnect');
-  } on BackupBusy {
-    finished = false;
-  } on SocketException {
-    await problem('offline');
-    finished = false;
-  } on TimeoutException {
-    await problem('timeout');
-    finished = false;
-  } on http.ClientException {
-    await problem('connection');
-    finished = false;
-  } on HttpException catch (error) {
-    await problem('retry:$error');
-    finished = false;
-  } on GoogleSignInException {
-    await problem('google');
-    finished = false;
-  } catch (error) {
-    // Retrying right away will not help, for example when Drive is full.
-    await problem('error:$error');
-  } finally {
-    drive.dispose();
   }
   if (finished) {
     final minutes = prefs.getInt(_minutesKey) ?? 120;

@@ -11,6 +11,7 @@ ArchiveItem _item(String id, {String? driveId, String? driveAccount}) =>
       position: 0,
       driveId: driveId,
       driveAccount: driveAccount,
+      backedUpTo: {?driveAccount},
     );
 
 void main() {
@@ -38,6 +39,19 @@ void main() {
   });
 
   group('pendingBackupItems', () {
+    test('an item backed up to one account is still due for another', () {
+      const item = ArchiveItem(
+        id: 'both',
+        collection: 'personal',
+        type: 'text',
+        createdAt: 0,
+        position: 0,
+        backedUpTo: {'a@example.com'},
+      );
+      expect(pendingBackupItems([item], 'a@example.com'), isEmpty);
+      expect(pendingBackupItems([item], 'b@example.com'), [item]);
+    });
+
     test('skips items already backed up to this account', () {
       final items = [
         _item('new'),

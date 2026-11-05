@@ -620,4 +620,76 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get updateCheckFailed =>
       'Could not check for updates. Check your internet connection.';
+
+  @override
+  String get addAccount => 'Add another Google account';
+
+  @override
+  String get removeAccount => 'Remove account';
+
+  @override
+  String removeAccountTitle(String email) {
+    return 'Remove $email?';
+  }
+
+  @override
+  String get removeAccountBody =>
+      'Memoir stops backing up to this account. Files already in its Drive stay there.';
+
+  @override
+  String get backupToAllAccounts =>
+      'Each backup goes to every account above, so your memories stay safe even if you lose one of them.';
+
+  @override
+  String get shareSaveTo => 'Save to Memoir';
+
+  @override
+  String shareItemsCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count items',
+      one: '1 item',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String sharedSaved(String name) {
+    return 'Saved to $name';
+  }
+
+  @override
+  String get recentlyDeleted => 'Recently deleted';
+
+  @override
+  String get recentlyDeletedSubtitle =>
+      'Deleted items are kept here for 30 days';
+
+  @override
+  String get trashEmpty => 'Nothing here';
+
+  @override
+  String get deleteForever => 'Delete forever';
+
+  @override
+  String get emptyTrash => 'Empty';
+
+  @override
+  String get emptyTrashTitle => 'Delete everything here forever?';
+
+  @override
+  String get emptyTrashBody =>
+      'They are removed from this phone. Copies in Google Drive stay.';
+
+  @override
+  String deletedOn(String date) {
+    return 'Deleted $date';
+  }
+
+  @override
+  String get movedToTrash => 'Moved to Recently deleted';
+
+  @override
+  String get undo => 'Undo';
 }

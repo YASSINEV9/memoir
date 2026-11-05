@@ -104,6 +104,15 @@ class SettingsScreen extends StatelessWidget {
           ),
           Card(
             child: ListTile(
+              leading: const Icon(Icons.delete_outline_rounded),
+              title: Text(l10n.recentlyDeleted),
+              subtitle: Text(l10n.recentlyDeletedSubtitle),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => context.push('/trash'),
+            ),
+          ),
+          Card(
+            child: ListTile(
               leading: const Icon(Icons.storage_outlined),
               title: Text(l10n.onDeviceArchive),
               subtitle: Text(l10n.onDeviceArchiveSubtitle),

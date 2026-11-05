@@ -624,4 +624,75 @@ class AppLocalizationsTr extends AppLocalizations {
   @override
   String get updateCheckFailed =>
       'Güncellemeler denetlenemedi. İnternet bağlantını kontrol et.';
+
+  @override
+  String get addAccount => 'Başka bir Google hesabı ekle';
+
+  @override
+  String get removeAccount => 'Hesabı kaldır';
+
+  @override
+  String removeAccountTitle(String email) {
+    return '$email kaldırılsın mı?';
+  }
+
+  @override
+  String get removeAccountBody =>
+      'Memoir bu hesaba yedeklemeyi bırakır. Drive\'ındaki mevcut dosyalar orada kalır.';
+
+  @override
+  String get backupToAllAccounts =>
+      'Her yedek yukarıdaki tüm hesaplara gider; biri kaybolsa bile anıların güvende kalır.';
+
+  @override
+  String get shareSaveTo => 'Memoir\'e kaydet';
+
+  @override
+  String shareItemsCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count öğe',
+      one: '1 öğe',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String sharedSaved(String name) {
+    return '$name sohbetine kaydedildi';
+  }
+
+  @override
+  String get recentlyDeleted => 'Son silinenler';
+
+  @override
+  String get recentlyDeletedSubtitle => 'Silinen öğeler burada 30 gün tutulur';
+
+  @override
+  String get trashEmpty => 'Burada bir şey yok';
+
+  @override
+  String get deleteForever => 'Kalıcı olarak sil';
+
+  @override
+  String get emptyTrash => 'Boşalt';
+
+  @override
+  String get emptyTrashTitle => 'Buradaki her şey kalıcı olarak silinsin mi?';
+
+  @override
+  String get emptyTrashBody =>
+      'Bu telefondan kaldırılırlar. Google Drive\'daki kopyalar kalır.';
+
+  @override
+  String deletedOn(String date) {
+    return '$date tarihinde silindi';
+  }
+
+  @override
+  String get movedToTrash => 'Son silinenlere taşındı';
+
+  @override
+  String get undo => 'Geri al';
 }

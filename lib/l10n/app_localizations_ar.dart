@@ -619,4 +619,76 @@ class AppLocalizationsAr extends AppLocalizations {
   @override
   String get updateCheckFailed =>
       'تعذّر البحث عن تحديثات. تحقّق من اتصالك بالإنترنت.';
+
+  @override
+  String get addAccount => 'إضافة حساب جوجل آخر';
+
+  @override
+  String get removeAccount => 'إزالة الحساب';
+
+  @override
+  String removeAccountTitle(String email) {
+    return 'إزالة $email؟';
+  }
+
+  @override
+  String get removeAccountBody =>
+      'سيتوقف Memoir عن النسخ إلى هذا الحساب. الملفات الموجودة في Drive الخاص به تبقى هناك.';
+
+  @override
+  String get backupToAllAccounts =>
+      'كل نسخة احتياطية تُرفع إلى كل الحسابات أعلاه، فتبقى ذكرياتك آمنة حتى لو فقدت أحدها.';
+
+  @override
+  String get shareSaveTo => 'حفظ في Memoir';
+
+  @override
+  String shareItemsCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count عناصر',
+      two: 'عنصران',
+      one: 'عنصر واحد',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String sharedSaved(String name) {
+    return 'تم الحفظ في $name';
+  }
+
+  @override
+  String get recentlyDeleted => 'المحذوفات';
+
+  @override
+  String get recentlyDeletedSubtitle => 'تبقى العناصر المحذوفة هنا 30 يومًا';
+
+  @override
+  String get trashEmpty => 'لا يوجد شيء هنا';
+
+  @override
+  String get deleteForever => 'حذف نهائي';
+
+  @override
+  String get emptyTrash => 'إفراغ';
+
+  @override
+  String get emptyTrashTitle => 'حذف كل ما هنا نهائيًا؟';
+
+  @override
+  String get emptyTrashBody =>
+      'ستُحذف من هذا الهاتف. النسخ الموجودة في Google Drive تبقى.';
+
+  @override
+  String deletedOn(String date) {
+    return 'حُذف في $date';
+  }
+
+  @override
+  String get movedToTrash => 'نُقل إلى المحذوفات';
+
+  @override
+  String get undo => 'تراجع';
 }

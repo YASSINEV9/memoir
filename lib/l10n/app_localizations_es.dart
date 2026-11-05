@@ -624,4 +624,76 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get updateCheckFailed =>
       'No se pudieron buscar actualizaciones. Comprueba tu conexión a Internet.';
+
+  @override
+  String get addAccount => 'Añadir otra cuenta de Google';
+
+  @override
+  String get removeAccount => 'Quitar cuenta';
+
+  @override
+  String removeAccountTitle(String email) {
+    return '¿Quitar $email?';
+  }
+
+  @override
+  String get removeAccountBody =>
+      'Memoir deja de hacer copias en esta cuenta. Los archivos que ya están en su Drive se quedan allí.';
+
+  @override
+  String get backupToAllAccounts =>
+      'Cada copia va a todas las cuentas de arriba, así tus recuerdos siguen a salvo aunque pierdas una.';
+
+  @override
+  String get shareSaveTo => 'Guardar en Memoir';
+
+  @override
+  String shareItemsCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count elementos',
+      one: '1 elemento',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String sharedSaved(String name) {
+    return 'Guardado en $name';
+  }
+
+  @override
+  String get recentlyDeleted => 'Eliminados recientemente';
+
+  @override
+  String get recentlyDeletedSubtitle =>
+      'Los elementos eliminados se guardan aquí 30 días';
+
+  @override
+  String get trashEmpty => 'No hay nada';
+
+  @override
+  String get deleteForever => 'Eliminar para siempre';
+
+  @override
+  String get emptyTrash => 'Vaciar';
+
+  @override
+  String get emptyTrashTitle => '¿Eliminar todo para siempre?';
+
+  @override
+  String get emptyTrashBody =>
+      'Se quitan de este teléfono. Las copias en Google Drive se quedan.';
+
+  @override
+  String deletedOn(String date) {
+    return 'Eliminado el $date';
+  }
+
+  @override
+  String get movedToTrash => 'Movido a Eliminados recientemente';
+
+  @override
+  String get undo => 'Deshacer';
 }

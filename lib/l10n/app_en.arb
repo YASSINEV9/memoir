@@ -384,5 +384,51 @@
     }
   },
   "upToDate": "You have the latest version.",
-  "updateCheckFailed": "Could not check for updates. Check your internet connection."
+  "updateCheckFailed": "Could not check for updates. Check your internet connection.",
+  "addAccount": "Add another Google account",
+  "removeAccount": "Remove account",
+  "removeAccountTitle": "Remove {email}?",
+  "@removeAccountTitle": {
+    "placeholders": {
+      "email": {
+        "type": "String"
+      }
+    }
+  },
+  "removeAccountBody": "Memoir stops backing up to this account. Files already in its Drive stay there.",
+  "backupToAllAccounts": "Each backup goes to every account above, so your memories stay safe even if you lose one of them.",
+  "shareSaveTo": "Save to Memoir",
+  "shareItemsCount": "{count, plural, =1{1 item} other{{count} items}}",
+  "@shareItemsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "sharedSaved": "Saved to {name}",
+  "@sharedSaved": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "recentlyDeleted": "Recently deleted",
+  "recentlyDeletedSubtitle": "Deleted items are kept here for 30 days",
+  "trashEmpty": "Nothing here",
+  "deleteForever": "Delete forever",
+  "emptyTrash": "Empty",
+  "emptyTrashTitle": "Delete everything here forever?",
+  "emptyTrashBody": "They are removed from this phone. Copies in Google Drive stay.",
+  "deletedOn": "Deleted {date}",
+  "@deletedOn": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "movedToTrash": "Moved to Recently deleted",
+  "undo": "Undo"
 }

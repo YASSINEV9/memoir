@@ -5,7 +5,6 @@ import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:google_sign_in_platform_interface/google_sign_in_platform_interface.dart';
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../archive/archive_item.dart';
 import 'cloud_storage_provider.dart';
@@ -52,10 +51,11 @@ class RemoteBackupItem {
       mimeType == 'application/json' && name == 'memory-vault-$itemId.json';
 }
 
-/// Google Drive connector. The Web OAuth client ID is a public identifier and
-/// is used as serverClientId for Android's native Google Sign-In flow.
+/// Google Drive connector for one Google account; see DriveAccounts for the
+/// list of connected accounts. The Web OAuth client ID is a public identifier
+/// and is used as serverClientId for Android's native Google Sign-In flow.
 class GoogleDriveProvider implements CloudStorageProvider {
-  GoogleDriveProvider({http.Client? client})
+  GoogleDriveProvider({http.Client? client, this._email})
     : _client = client ?? http.Client();
 
   static const _webClientId =
@@ -64,10 +64,6 @@ class GoogleDriveProvider implements CloudStorageProvider {
   static const _scopes = <String>[_driveScope];
   static const _baseUrl = 'https://www.googleapis.com/drive/v3';
   static const _uploadUrl = 'https://www.googleapis.com/upload/drive/v3';
-
-  /// The connected account. Saved after the first successful connect so the
-  /// session comes back on the next launch and in background backups.
-  static const _emailKey = 'google_drive_email';
 
   /// GoogleSignIn may only be initialized once per isolate.
   static Future<void>? _initializing;
@@ -119,14 +115,12 @@ class GoogleDriveProvider implements CloudStorageProvider {
     return _initializing ??= _signIn.initialize(serverClientId: _webClientId);
   }
 
-  /// Restores the saved session without showing any UI. On Android this must
-  /// not use attemptLightweightAuthentication: that falls back to an account
-  /// bottom sheet and needs an Activity, so it fails in background backups.
+  /// Restores this account's session without showing any UI. On Android this
+  /// must not use attemptLightweightAuthentication: that falls back to an
+  /// account bottom sheet and needs an Activity, so it fails in background
+  /// backups.
   Future<bool> restore() async {
     await initialize();
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.reload();
-    _email = prefs.getString(_emailKey);
     _needsReconnect = false;
     if (_email == null) return false;
     try {
@@ -179,6 +173,7 @@ class GoogleDriveProvider implements CloudStorageProvider {
     _tokenExpiry = DateTime.now().add(const Duration(minutes: 45));
   }
 
+  /// Signs in with whichever account the user picks in Google's chooser.
   @override
   Future<String> connect() async {
     await initialize();
@@ -194,23 +189,39 @@ class GoogleDriveProvider implements CloudStorageProvider {
     _email = user.email;
     _needsReconnect = false;
     _rememberToken(authorization.accessToken);
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_emailKey, user.email);
     await _ensureFolderStructure();
     return user.email;
   }
 
+  /// Takes over the session of [other], which just signed in to this
+  /// provider's account again (a reconnect).
+  void adopt(GoogleDriveProvider other) {
+    _account = other._account;
+    _needsReconnect = false;
+    _token = other._token;
+    _tokenExpiry = other._tokenExpiry;
+  }
+
+  /// Revokes Drive access for this account only. GoogleSignIn's own
+  /// disconnect would revoke every connected account at once.
   @override
   Future<void> disconnect() async {
     await initialize();
     try {
-      await _signIn.disconnect();
+      final token = _token ?? await _silentToken();
+      if (token != null) {
+        await _client.post(
+          Uri.parse('https://oauth2.googleapis.com/revoke'),
+          headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+          body: {'token': token},
+        );
+        await _signIn.authorizationClient.clearAuthorizationToken(
+          accessToken: token,
+        );
+      }
     } finally {
       // Always forget the account here, even if revoking failed while offline.
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.remove(_emailKey);
       _account = null;
-      _email = null;
       _needsReconnect = false;
       _clearDriveCache();
     }

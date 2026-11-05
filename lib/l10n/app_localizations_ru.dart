@@ -625,4 +625,76 @@ class AppLocalizationsRu extends AppLocalizations {
   @override
   String get updateCheckFailed =>
       'Не удалось проверить обновления. Проверьте подключение к интернету.';
+
+  @override
+  String get addAccount => 'Добавить ещё аккаунт Google';
+
+  @override
+  String get removeAccount => 'Удалить аккаунт';
+
+  @override
+  String removeAccountTitle(String email) {
+    return 'Удалить $email?';
+  }
+
+  @override
+  String get removeAccountBody =>
+      'Memoir перестанет копировать в этот аккаунт. Файлы, уже лежащие на его Диске, останутся там.';
+
+  @override
+  String get backupToAllAccounts =>
+      'Каждая копия сохраняется во все аккаунты выше, поэтому воспоминания будут в безопасности, даже если вы потеряете один из них.';
+
+  @override
+  String get shareSaveTo => 'Сохранить в Memoir';
+
+  @override
+  String shareItemsCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count элементов',
+      few: '$count элемента',
+      one: '1 элемент',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String sharedSaved(String name) {
+    return 'Сохранено в «$name»';
+  }
+
+  @override
+  String get recentlyDeleted => 'Недавно удалённые';
+
+  @override
+  String get recentlyDeletedSubtitle => 'Удалённое хранится здесь 30 дней';
+
+  @override
+  String get trashEmpty => 'Здесь пусто';
+
+  @override
+  String get deleteForever => 'Удалить навсегда';
+
+  @override
+  String get emptyTrash => 'Очистить';
+
+  @override
+  String get emptyTrashTitle => 'Удалить всё навсегда?';
+
+  @override
+  String get emptyTrashBody =>
+      'Они будут удалены с этого телефона. Копии на Google Диске останутся.';
+
+  @override
+  String deletedOn(String date) {
+    return 'Удалено $date';
+  }
+
+  @override
+  String get movedToTrash => 'Перемещено в «Недавно удалённые»';
+
+  @override
+  String get undo => 'Отменить';
 }

@@ -183,25 +183,25 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       case 'favorite':
         await repo.setFlag(item, 'favorite', !item.favorite);
       case 'delete':
-        final confirmed = await showDialog<bool>(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: Text(l10n.deleteTitle),
-            content: Text(l10n.deleteBody),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: Text(l10n.cancel),
+        // Recently deleted keeps it for 30 days, so no confirmation needed.
+        await repo.moveToTrash(item);
+        await _changed();
+        if (!mounted) return;
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(
+            SnackBar(
+              content: Text(l10n.movedToTrash),
+              action: SnackBarAction(
+                label: l10n.undo,
+                onPressed: () async {
+                  await repo.restoreFromTrash(item);
+                  await _changed();
+                },
               ),
-              FilledButton(
-                onPressed: () => Navigator.pop(context, true),
-                child: Text(l10n.delete),
-              ),
-            ],
-          ),
-        );
-        if (confirmed != true) return;
-        await repo.delete(item);
+            ),
+          );
+        return;
     }
     await _changed();
   }
@@ -772,7 +772,7 @@ class _EmptyChat extends StatelessWidget {
       margin: const EdgeInsets.all(32),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: .18),
+        color: Colors.black.withValues(alpha: .4),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Column(
