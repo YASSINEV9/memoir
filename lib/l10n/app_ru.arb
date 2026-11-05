@@ -154,5 +154,13 @@
   "lockUnlockReason": "Разблокировать Memoir",
   "lockedTitle": "Memoir заблокирован",
   "lockedSubtitle": "Используйте PIN-код, графический ключ или отпечаток пальца",
-  "unlock": "Разблокировать"
+  "unlock": "Разблокировать",
+  "updateAvailableTitle": "Доступна версия {version}",
+  "updateAvailableBody": "Готова новая версия Memoir. Скачайте её и установите поверх текущей — ваши воспоминания останутся на телефоне.",
+  "updateDownload": "Скачать",
+  "updateLater": "Позже",
+  "checkForUpdates": "Проверить обновления",
+  "currentVersion": "Версия {version}",
+  "upToDate": "У вас последняя версия.",
+  "updateCheckFailed": "Не удалось проверить обновления. Проверьте подключение к интернету."
 }

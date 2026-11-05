@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../main.dart';
 import '../l10n.dart';
 import '../security/app_lock.dart';
+import '../update/update_prompt.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -147,11 +149,17 @@ class SettingsScreen extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(height: 16),
-          Center(
-            child: Text(
-              'Memoir · 1.1.0',
-              style: Theme.of(context).textTheme.labelMedium,
+          Card(
+            child: FutureBuilder<PackageInfo>(
+              future: PackageInfo.fromPlatform(),
+              builder: (context, snapshot) => ListTile(
+                leading: const Icon(Icons.system_update_rounded),
+                title: Text(l10n.checkForUpdates),
+                subtitle: Text(
+                  l10n.currentVersion(snapshot.data?.version ?? '…'),
+                ),
+                onTap: () => checkForUpdateNow(context),
+              ),
             ),
           ),
         ],

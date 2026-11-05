@@ -11,6 +11,7 @@ import '../archive/archive_item.dart';
 import '../archive/archive_repository.dart';
 import '../chat/chat_style.dart';
 import '../l10n.dart';
+import '../update/update_prompt.dart';
 
 class ArchiveScreen extends ConsumerStatefulWidget {
   const ArchiveScreen({super.key});
@@ -21,6 +22,15 @@ class ArchiveScreen extends ConsumerStatefulWidget {
 
 class _ArchiveScreenState extends ConsumerState<ArchiveScreen> {
   final _search = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    // Offer a newer version from GitHub once the first screen is shown.
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => promptForUpdateIfDue(context),
+    );
+  }
 
   @override
   void dispose() {

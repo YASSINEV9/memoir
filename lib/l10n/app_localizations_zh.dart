@@ -532,4 +532,32 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get unlock => '解锁';
+
+  @override
+  String updateAvailableTitle(String version) {
+    return '新版本 $version 可用';
+  }
+
+  @override
+  String get updateAvailableBody => 'Memoir 有新版本了。下载后直接覆盖安装即可，你的回忆仍保留在手机上。';
+
+  @override
+  String get updateDownload => '下载';
+
+  @override
+  String get updateLater => '以后再说';
+
+  @override
+  String get checkForUpdates => '检查更新';
+
+  @override
+  String currentVersion(String version) {
+    return '版本 $version';
+  }
+
+  @override
+  String get upToDate => '已是最新版本。';
+
+  @override
+  String get updateCheckFailed => '无法检查更新。请检查网络连接。';
 }

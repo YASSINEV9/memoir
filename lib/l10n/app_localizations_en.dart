@@ -590,4 +590,34 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get unlock => 'Unlock';
+
+  @override
+  String updateAvailableTitle(String version) {
+    return 'Version $version is available';
+  }
+
+  @override
+  String get updateAvailableBody =>
+      'A new version of Memoir is ready. Download it and install it over this one; your memories stay on your phone.';
+
+  @override
+  String get updateDownload => 'Download';
+
+  @override
+  String get updateLater => 'Later';
+
+  @override
+  String get checkForUpdates => 'Check for updates';
+
+  @override
+  String currentVersion(String version) {
+    return 'Version $version';
+  }
+
+  @override
+  String get upToDate => 'You have the latest version.';
+
+  @override
+  String get updateCheckFailed =>
+      'Could not check for updates. Check your internet connection.';
 }

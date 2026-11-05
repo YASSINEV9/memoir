@@ -1045,6 +1045,54 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Unlock'**
   String get unlock;
+
+  /// No description provided for @updateAvailableTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Version {version} is available'**
+  String updateAvailableTitle(String version);
+
+  /// No description provided for @updateAvailableBody.
+  ///
+  /// In en, this message translates to:
+  /// **'A new version of Memoir is ready. Download it and install it over this one; your memories stay on your phone.'**
+  String get updateAvailableBody;
+
+  /// No description provided for @updateDownload.
+  ///
+  /// In en, this message translates to:
+  /// **'Download'**
+  String get updateDownload;
+
+  /// No description provided for @updateLater.
+  ///
+  /// In en, this message translates to:
+  /// **'Later'**
+  String get updateLater;
+
+  /// No description provided for @checkForUpdates.
+  ///
+  /// In en, this message translates to:
+  /// **'Check for updates'**
+  String get checkForUpdates;
+
+  /// No description provided for @currentVersion.
+  ///
+  /// In en, this message translates to:
+  /// **'Version {version}'**
+  String currentVersion(String version);
+
+  /// No description provided for @upToDate.
+  ///
+  /// In en, this message translates to:
+  /// **'You have the latest version.'**
+  String get upToDate;
+
+  /// No description provided for @updateCheckFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not check for updates. Check your internet connection.'**
+  String get updateCheckFailed;
 }
 
 class _AppLocalizationsDelegate

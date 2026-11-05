@@ -154,5 +154,13 @@
   "lockUnlockReason": "Memoir'in kilidini aç",
   "lockedTitle": "Memoir kilitli",
   "lockedSubtitle": "Telefonunun PIN'ini, desenini veya parmak izini kullan",
-  "unlock": "Kilidi aç"
+  "unlock": "Kilidi aç",
+  "updateAvailableTitle": "{version} sürümü mevcut",
+  "updateAvailableBody": "Memoir'in yeni sürümü hazır. İndirip bu sürümün üzerine kur; anıların telefonunda kalır.",
+  "updateDownload": "İndir",
+  "updateLater": "Daha sonra",
+  "checkForUpdates": "Güncellemeleri denetle",
+  "currentVersion": "Sürüm {version}",
+  "upToDate": "En son sürümü kullanıyorsun.",
+  "updateCheckFailed": "Güncellemeler denetlenemedi. İnternet bağlantını kontrol et."
 }

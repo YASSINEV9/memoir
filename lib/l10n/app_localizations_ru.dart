@@ -595,4 +595,34 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get unlock => 'Разблокировать';
+
+  @override
+  String updateAvailableTitle(String version) {
+    return 'Доступна версия $version';
+  }
+
+  @override
+  String get updateAvailableBody =>
+      'Готова новая версия Memoir. Скачайте её и установите поверх текущей — ваши воспоминания останутся на телефоне.';
+
+  @override
+  String get updateDownload => 'Скачать';
+
+  @override
+  String get updateLater => 'Позже';
+
+  @override
+  String get checkForUpdates => 'Проверить обновления';
+
+  @override
+  String currentVersion(String version) {
+    return 'Версия $version';
+  }
+
+  @override
+  String get upToDate => 'У вас последняя версия.';
+
+  @override
+  String get updateCheckFailed =>
+      'Не удалось проверить обновления. Проверьте подключение к интернету.';
 }

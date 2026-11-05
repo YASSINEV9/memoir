@@ -154,5 +154,13 @@
   "lockUnlockReason": "解锁 Memoir",
   "lockedTitle": "Memoir 已锁定",
   "lockedSubtitle": "使用手机的 PIN 码、图案或指纹",
-  "unlock": "解锁"
+  "unlock": "解锁",
+  "updateAvailableTitle": "新版本 {version} 可用",
+  "updateAvailableBody": "Memoir 有新版本了。下载后直接覆盖安装即可，你的回忆仍保留在手机上。",
+  "updateDownload": "下载",
+  "updateLater": "以后再说",
+  "checkForUpdates": "检查更新",
+  "currentVersion": "版本 {version}",
+  "upToDate": "已是最新版本。",
+  "updateCheckFailed": "无法检查更新。请检查网络连接。"
 }

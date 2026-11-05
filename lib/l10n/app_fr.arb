@@ -154,5 +154,13 @@
   "lockUnlockReason": "Déverrouiller Memoir",
   "lockedTitle": "Memoir est verrouillé",
   "lockedSubtitle": "Utilisez le code, le schéma ou l'empreinte de votre téléphone",
-  "unlock": "Déverrouiller"
+  "unlock": "Déverrouiller",
+  "updateAvailableTitle": "La version {version} est disponible",
+  "updateAvailableBody": "Une nouvelle version de Memoir est prête. Téléchargez-la et installez-la par-dessus celle-ci ; vos souvenirs restent sur votre téléphone.",
+  "updateDownload": "Télécharger",
+  "updateLater": "Plus tard",
+  "checkForUpdates": "Rechercher des mises à jour",
+  "currentVersion": "Version {version}",
+  "upToDate": "Vous avez la dernière version.",
+  "updateCheckFailed": "Impossible de rechercher des mises à jour. Vérifiez votre connexion Internet."
 }

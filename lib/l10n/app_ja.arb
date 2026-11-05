@@ -154,5 +154,13 @@
   "lockUnlockReason": "Memoir のロックを解除",
   "lockedTitle": "Memoir はロックされています",
   "lockedSubtitle": "端末の PIN、パターン、指紋を使ってください",
-  "unlock": "ロックを解除"
+  "unlock": "ロックを解除",
+  "updateAvailableTitle": "バージョン {version} が利用可能です",
+  "updateAvailableBody": "Memoir の新しいバージョンがあります。ダウンロードしてこのまま上書きインストールしてください。思い出はスマホに残ります。",
+  "updateDownload": "ダウンロード",
+  "updateLater": "後で",
+  "checkForUpdates": "アップデートを確認",
+  "currentVersion": "バージョン {version}",
+  "upToDate": "最新バージョンです。",
+  "updateCheckFailed": "アップデートを確認できませんでした。インターネット接続を確認してください。"
 }

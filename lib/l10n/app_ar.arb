@@ -154,5 +154,13 @@
   "lockUnlockReason": "افتح Memoir",
   "lockedTitle": "Memoir مقفل",
   "lockedSubtitle": "استخدم رمز هاتفك أو النمط أو بصمة الإصبع",
-  "unlock": "فتح القفل"
+  "unlock": "فتح القفل",
+  "updateAvailableTitle": "الإصدار {version} متوفر",
+  "updateAvailableBody": "يتوفر إصدار جديد من Memoir. حمّله وثبّته فوق هذا الإصدار، وتبقى ذكرياتك على هاتفك.",
+  "updateDownload": "تحميل",
+  "updateLater": "لاحقًا",
+  "checkForUpdates": "البحث عن تحديثات",
+  "currentVersion": "الإصدار {version}",
+  "upToDate": "لديك أحدث إصدار.",
+  "updateCheckFailed": "تعذّر البحث عن تحديثات. تحقّق من اتصالك بالإنترنت."
 }

@@ -593,4 +593,34 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get unlock => 'Desbloquear';
+
+  @override
+  String updateAvailableTitle(String version) {
+    return 'A versão $version está disponível';
+  }
+
+  @override
+  String get updateAvailableBody =>
+      'Uma nova versão do Memoir está pronta. Baixe e instale por cima desta; suas memórias ficam no seu telefone.';
+
+  @override
+  String get updateDownload => 'Baixar';
+
+  @override
+  String get updateLater => 'Mais tarde';
+
+  @override
+  String get checkForUpdates => 'Verificar atualizações';
+
+  @override
+  String currentVersion(String version) {
+    return 'Versão $version';
+  }
+
+  @override
+  String get upToDate => 'Você tem a versão mais recente.';
+
+  @override
+  String get updateCheckFailed =>
+      'Não foi possível verificar atualizações. Verifique sua conexão com a Internet.';
 }

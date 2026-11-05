@@ -154,5 +154,13 @@
   "lockUnlockReason": "Desbloquear o Memoir",
   "lockedTitle": "O Memoir está bloqueado",
   "lockedSubtitle": "Use o PIN, o padrão ou a digital do seu telefone",
-  "unlock": "Desbloquear"
+  "unlock": "Desbloquear",
+  "updateAvailableTitle": "A versão {version} está disponível",
+  "updateAvailableBody": "Uma nova versão do Memoir está pronta. Baixe e instale por cima desta; suas memórias ficam no seu telefone.",
+  "updateDownload": "Baixar",
+  "updateLater": "Mais tarde",
+  "checkForUpdates": "Verificar atualizações",
+  "currentVersion": "Versão {version}",
+  "upToDate": "Você tem a versão mais recente.",
+  "updateCheckFailed": "Não foi possível verificar atualizações. Verifique sua conexão com a Internet."
 }

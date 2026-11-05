@@ -567,4 +567,34 @@ class AppLocalizationsHi extends AppLocalizations {
 
   @override
   String get unlock => 'अनलॉक करें';
+
+  @override
+  String updateAvailableTitle(String version) {
+    return 'संस्करण $version उपलब्ध है';
+  }
+
+  @override
+  String get updateAvailableBody =>
+      'Memoir का नया संस्करण तैयार है। इसे डाउनलोड करके इसी के ऊपर इंस्टॉल करें; आपकी यादें आपके फ़ोन पर ही रहेंगी।';
+
+  @override
+  String get updateDownload => 'डाउनलोड करें';
+
+  @override
+  String get updateLater => 'बाद में';
+
+  @override
+  String get checkForUpdates => 'अपडेट जाँचें';
+
+  @override
+  String currentVersion(String version) {
+    return 'संस्करण $version';
+  }
+
+  @override
+  String get upToDate => 'आपके पास नवीनतम संस्करण है।';
+
+  @override
+  String get updateCheckFailed =>
+      'अपडेट नहीं जाँच सके। अपना इंटरनेट कनेक्शन जाँचें।';
 }

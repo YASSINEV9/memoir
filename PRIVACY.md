@@ -24,6 +24,10 @@ App lock uses your phone's own screen lock (PIN, pattern, password, fingerprint 
 
 Memoir only accesses photos you pick, and saves a photo to your gallery only when you tap **Save**.
 
+## Update check
+
+Once a day, the Android app asks GitHub for the latest Memoir release to tell you when a new version is available. The request contains no personal data, and you choose whether to download the update.
+
 ## No tracking
 
 Memoir contains no ads, analytics or tracking.

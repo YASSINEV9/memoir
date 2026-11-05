@@ -594,4 +594,34 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get unlock => 'Kilidi aç';
+
+  @override
+  String updateAvailableTitle(String version) {
+    return '$version sürümü mevcut';
+  }
+
+  @override
+  String get updateAvailableBody =>
+      'Memoir\'in yeni sürümü hazır. İndirip bu sürümün üzerine kur; anıların telefonunda kalır.';
+
+  @override
+  String get updateDownload => 'İndir';
+
+  @override
+  String get updateLater => 'Daha sonra';
+
+  @override
+  String get checkForUpdates => 'Güncellemeleri denetle';
+
+  @override
+  String currentVersion(String version) {
+    return 'Sürüm $version';
+  }
+
+  @override
+  String get upToDate => 'En son sürümü kullanıyorsun.';
+
+  @override
+  String get updateCheckFailed =>
+      'Güncellemeler denetlenemedi. İnternet bağlantını kontrol et.';
 }

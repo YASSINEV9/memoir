@@ -589,4 +589,34 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get unlock => 'فتح القفل';
+
+  @override
+  String updateAvailableTitle(String version) {
+    return 'الإصدار $version متوفر';
+  }
+
+  @override
+  String get updateAvailableBody =>
+      'يتوفر إصدار جديد من Memoir. حمّله وثبّته فوق هذا الإصدار، وتبقى ذكرياتك على هاتفك.';
+
+  @override
+  String get updateDownload => 'تحميل';
+
+  @override
+  String get updateLater => 'لاحقًا';
+
+  @override
+  String get checkForUpdates => 'البحث عن تحديثات';
+
+  @override
+  String currentVersion(String version) {
+    return 'الإصدار $version';
+  }
+
+  @override
+  String get upToDate => 'لديك أحدث إصدار.';
+
+  @override
+  String get updateCheckFailed =>
+      'تعذّر البحث عن تحديثات. تحقّق من اتصالك بالإنترنت.';
 }

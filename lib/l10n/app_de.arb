@@ -154,5 +154,13 @@
   "lockUnlockReason": "Memoir entsperren",
   "lockedTitle": "Memoir ist gesperrt",
   "lockedSubtitle": "Nutze PIN, Muster oder Fingerabdruck deines Telefons",
-  "unlock": "Entsperren"
+  "unlock": "Entsperren",
+  "updateAvailableTitle": "Version {version} ist verfügbar",
+  "updateAvailableBody": "Eine neue Version von Memoir ist bereit. Lade sie herunter und installiere sie über diese; deine Erinnerungen bleiben auf deinem Telefon.",
+  "updateDownload": "Herunterladen",
+  "updateLater": "Später",
+  "checkForUpdates": "Nach Updates suchen",
+  "currentVersion": "Version {version}",
+  "upToDate": "Du hast die neueste Version.",
+  "updateCheckFailed": "Suche nach Updates fehlgeschlagen. Prüfe deine Internetverbindung."
 }

@@ -154,5 +154,13 @@
   "lockUnlockReason": "Memoir अनलॉक करें",
   "lockedTitle": "Memoir लॉक है",
   "lockedSubtitle": "अपने फ़ोन का PIN, पैटर्न या फ़िंगरप्रिंट इस्तेमाल करें",
-  "unlock": "अनलॉक करें"
+  "unlock": "अनलॉक करें",
+  "updateAvailableTitle": "संस्करण {version} उपलब्ध है",
+  "updateAvailableBody": "Memoir का नया संस्करण तैयार है। इसे डाउनलोड करके इसी के ऊपर इंस्टॉल करें; आपकी यादें आपके फ़ोन पर ही रहेंगी।",
+  "updateDownload": "डाउनलोड करें",
+  "updateLater": "बाद में",
+  "checkForUpdates": "अपडेट जाँचें",
+  "currentVersion": "संस्करण {version}",
+  "upToDate": "आपके पास नवीनतम संस्करण है।",
+  "updateCheckFailed": "अपडेट नहीं जाँच सके। अपना इंटरनेट कनेक्शन जाँचें।"
 }

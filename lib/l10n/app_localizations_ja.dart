@@ -539,4 +539,33 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get unlock => 'ロックを解除';
+
+  @override
+  String updateAvailableTitle(String version) {
+    return 'バージョン $version が利用可能です';
+  }
+
+  @override
+  String get updateAvailableBody =>
+      'Memoir の新しいバージョンがあります。ダウンロードしてこのまま上書きインストールしてください。思い出はスマホに残ります。';
+
+  @override
+  String get updateDownload => 'ダウンロード';
+
+  @override
+  String get updateLater => '後で';
+
+  @override
+  String get checkForUpdates => 'アップデートを確認';
+
+  @override
+  String currentVersion(String version) {
+    return 'バージョン $version';
+  }
+
+  @override
+  String get upToDate => '最新バージョンです。';
+
+  @override
+  String get updateCheckFailed => 'アップデートを確認できませんでした。インターネット接続を確認してください。';
 }
