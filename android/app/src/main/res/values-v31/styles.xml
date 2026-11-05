@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Android 12+ shows its own splash from these attributes. The icon background matches the
+         window so no circle appears around the logo. -->
+    <style name="LaunchTheme" parent="Theme.AppCompat.Light.NoActionBar">
+        <item name="android:windowBackground">@drawable/launch_background</item>
+        <item name="android:windowSplashScreenBackground">#FFFFFF</item>
+        <item name="android:windowSplashScreenIconBackgroundColor">#FFFFFF</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/launch_logo_v31</item>
+    </style>
+</resources>

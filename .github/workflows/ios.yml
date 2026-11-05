@@ -1,0 +1,46 @@
+# Builds an unsigned iOS app on a macOS runner and attaches it to the
+# GitHub release. iOS apps can only be built on macOS, and installing the
+# .ipa on an iPhone requires signing it (for example with AltStore or
+# Sideloadly and a free Apple ID).
+name: iOS build
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  ios:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.47.8
+          channel: stable
+          cache: true
+
+      - run: flutter pub get
+
+      - run: flutter build ios --release --no-codesign
+
+      - name: Package unsigned IPA
+        run: |
+          mkdir -p Payload
+          cp -R build/ios/iphoneos/Runner.app Payload/
+          zip -qry Memoir-ios-unsigned.ipa Payload
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Memoir-ios-unsigned
+          path: Memoir-ios-unsigned.ipa
+
+      - name: Attach to release
+        if: github.event_name == 'release'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "${{ github.event.release.tag_name }}" Memoir-ios-unsigned.ipa --clobber
