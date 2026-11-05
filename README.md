@@ -26,6 +26,9 @@
 - **قفل التطبيق** ببصمة الإصبع أو PIN أو النمط (نفس قفل هاتفك).
 - **نسخ احتياطي إلى Google Drive:** يرفع العناصر الجديدة فقط، عدة ملفات في نفس الوقت، داخل مجلد `Memoir` منظّم (Photos, Videos, Documents…).
 - **نسخ احتياطي تلقائي يومي** في الوقت الذي تختاره، ينتظر الاتصال بالإنترنت ويعيد المحاولة تلقائيًا.
+- **11 لغة:** العربية، الإنجليزية، الفرنسية، الإسبانية، البرتغالية، الألمانية، الروسية، الصينية، اليابانية، الهندية، التركية، مع اختيار اللغة من الإعدادات.
+- **تشغيل الفيديو** داخل التطبيق، أو فتحه بتطبيق آخر، أو في Google Drive.
+- **الاسترجاع بعد إعادة التثبيت:** سجّل الدخول بنفس الحساب، فيجد Memoir نسختك في Drive ويعيد كل رسالة وصورة وفيديو إلى محادثتها.
 - **كل مستخدم يستعمل حسابه:** سجّل الدخول بحساب Gmail الخاص بك، فتُحفظ نسختك في مجلد `Memoir` داخل Google Drive الخاص بك أنت فقط.
 
 **ملاحظة عند تسجيل الدخول بجوجل:** إذا ظهرت رسالة «Google hasn't verified this app»، اضغط **Advanced** ثم **Go to Memory Vault**. التطبيق لا يرى إلا الملفات التي أنشأها هو في Drive الخاص بك.
@@ -56,6 +59,9 @@
 - App lock with fingerprint, face, PIN or pattern via the system prompt
 - Incremental, parallel Google Drive backup using the minimal `drive.file` scope
 - Daily automatic backup at a time you pick; waits for internet and retries
+- 11 languages (Arabic, English, French, Spanish, Portuguese, German, Russian, Chinese, Japanese, Hindi, Turkish) with an in-app picker
+- In-app video player, plus open with another app or in Google Drive
+- Restore after reinstalling: sign in with the same account and Memoir puts everything back in its chats
 - Each user signs in with their own Google account and gets their own `Memoir` folder in their own Drive
 - Search, pin, favorite, copy and delete
 - No server, ads, analytics or tracking. See [PRIVACY.md](PRIVACY.md)

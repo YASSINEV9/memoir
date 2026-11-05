@@ -10,6 +10,7 @@ import '../../main.dart';
 import '../archive/archive_item.dart';
 import '../archive/archive_repository.dart';
 import '../chat/chat_style.dart';
+import '../l10n.dart';
 
 class ArchiveScreen extends ConsumerStatefulWidget {
   const ArchiveScreen({super.key});
@@ -31,28 +32,29 @@ class _ArchiveScreenState extends ConsumerState<ArchiveScreen> {
   Widget build(BuildContext context) {
     final items = ref.watch(archiveControllerProvider);
     final repo = ref.watch(repositoryProvider);
+    final l10n = context.l10n;
     return Scaffold(
       appBar: AppBar(
         titleSpacing: 16,
-        title: const Column(
+        title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text('Memoir', style: TextStyle(fontWeight: FontWeight.w700)),
+            const Text('Memoir', style: TextStyle(fontWeight: FontWeight.w700)),
             Text(
-              'Your saved moments',
-              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w400),
+              l10n.archiveSubtitle,
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w400),
             ),
           ],
         ),
         actions: [
           IconButton(
-            tooltip: 'New collection',
+            tooltip: l10n.newCollection,
             onPressed: () => _createCollection(context),
             icon: const Icon(Icons.create_new_folder_outlined),
           ),
           IconButton(
-            tooltip: 'Google Drive',
+            tooltip: l10n.navDrive,
             onPressed: () => context.go('/cloud'),
             icon: const Icon(Icons.add_to_drive_outlined),
           ),
@@ -74,7 +76,7 @@ class _ArchiveScreenState extends ConsumerState<ArchiveScreen> {
                   padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
                   child: SearchBar(
                     controller: _search,
-                    hintText: 'Search your archive',
+                    hintText: l10n.searchHint,
                     leading: const Icon(Icons.search),
                     onChanged: (text) {
                       setState(() {});
@@ -101,11 +103,10 @@ class _ArchiveScreenState extends ConsumerState<ArchiveScreen> {
                       : items.when(
                           loading: () =>
                               const Center(child: CircularProgressIndicator()),
-                          error: (e, _) => Center(
-                            child: Text('Archive could not be opened: $e'),
-                          ),
+                          error: (e, _) =>
+                              Center(child: Text(l10n.archiveError('$e'))),
                           data: (rows) => rows.isEmpty
-                              ? const Center(child: Text('No matches'))
+                              ? Center(child: Text(l10n.noMatches))
                               : ListView.builder(
                                   padding: const EdgeInsets.fromLTRB(
                                     16,
@@ -128,7 +129,7 @@ class _ArchiveScreenState extends ConsumerState<ArchiveScreen> {
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showAdd(context),
         icon: const Icon(Icons.add),
-        label: const Text('Add to vault'),
+        label: Text(l10n.addToVault),
       ),
     );
   }
@@ -169,18 +170,20 @@ class _ArchiveScreenState extends ConsumerState<ArchiveScreen> {
   ) {
     final style = ChatStyle.of(collection.id, Theme.of(context).brightness);
     final latest = summary?.latest;
+    final l10n = context.l10n;
+    final name = collectionLabel(l10n, collection.id, collection.name);
     final preview = latest == null
-        ? 'No messages yet'
+        ? l10n.noMessagesYet
         : latest.type == 'image'
-        ? 'Photo'
+        ? l10n.photo
         : latest.localPath != null
-        ? (latest.filename ?? 'File')
+        ? (latest.filename ?? l10n.file)
         : latest.body ?? '';
     final muted = Theme.of(context).colorScheme.onSurfaceVariant;
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
       onTap: () async {
-        await context.push('/chat/${collection.id}', extra: collection.name);
+        await context.push('/chat/${collection.id}', extra: name);
         if (mounted) setState(() {});
       },
       leading: CircleAvatar(
@@ -189,7 +192,7 @@ class _ArchiveScreenState extends ConsumerState<ArchiveScreen> {
         child: Icon(style.avatarIcon, color: Colors.white, size: 26),
       ),
       title: Text(
-        collection.name,
+        name,
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
         style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
@@ -260,8 +263,8 @@ class _ArchiveScreenState extends ConsumerState<ArchiveScreen> {
       return DateFormat.Hm().format(date);
     }
     return date.year == now.year
-        ? DateFormat('MMM d').format(date)
-        : DateFormat('d/M/y').format(date);
+        ? DateFormat.MMMd().format(date)
+        : DateFormat.yMd().format(date);
   }
 
   Widget _empty(BuildContext context) => Center(
@@ -285,13 +288,13 @@ class _ArchiveScreenState extends ConsumerState<ArchiveScreen> {
           ),
           const SizedBox(height: 20),
           Text(
-            'Your archive starts here',
+            context.l10n.emptyTitle,
             style: Theme.of(context).textTheme.titleLarge
                 ?.copyWith(fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 8),
           Text(
-            'Save a note, a link, a photo, or any file. Your items stay on this device.',
+            context.l10n.emptyBody,
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.bodyMedium,
           ),
@@ -311,6 +314,7 @@ class _ArchiveScreenState extends ConsumerState<ArchiveScreen> {
       _ => Icons.insert_drive_file_outlined,
     };
     final date = DateTime.fromMillisecondsSinceEpoch(item.createdAt);
+    final l10n = context.l10n;
     return Align(
       alignment: Alignment.centerRight,
       child: ConstrainedBox(
@@ -356,16 +360,16 @@ class _ArchiveScreenState extends ConsumerState<ArchiveScreen> {
                         Text(
                           item.filename ??
                               (item.type == 'link'
-                                  ? 'Saved link'
+                                  ? l10n.savedLink
                                   : item.type == 'text'
-                                  ? 'Saved note'
-                                  : 'Attachment'),
+                                  ? l10n.savedNote
+                                  : l10n.attachment),
                           style: const TextStyle(fontWeight: FontWeight.w600),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
                         Text(
-                          DateFormat('MMM d · HH:mm').format(date),
+                          DateFormat.MMMd().add_Hm().format(date),
                           style: Theme.of(context).textTheme.labelSmall,
                         ),
                       ],
@@ -385,12 +389,12 @@ class _ArchiveScreenState extends ConsumerState<ArchiveScreen> {
                     itemBuilder: (_) => [
                       PopupMenuItem(
                         value: 'pin',
-                        child: Text(item.pinned ? 'Unpin' : 'Pin'),
+                        child: Text(item.pinned ? l10n.unpin : l10n.pin),
                       ),
                       PopupMenuItem(
                         value: 'favorite',
                         child: Text(
-                          item.favorite ? 'Remove favorite' : 'Favorite',
+                          item.favorite ? l10n.removeFavorite : l10n.favorite,
                         ),
                       ),
                     ],
@@ -422,7 +426,7 @@ class _ArchiveScreenState extends ConsumerState<ArchiveScreen> {
                 Padding(
                   padding: const EdgeInsets.only(left: 48, top: 8),
                   child: Text(
-                    '${_size(item.size)}  ·  Saved to Memoir',
+                    '${_size(item.size)}  ·  ${l10n.savedToMemoir}',
                     style: Theme.of(context).textTheme.labelSmall,
                   ),
                 ),
@@ -434,10 +438,10 @@ class _ArchiveScreenState extends ConsumerState<ArchiveScreen> {
   }
 
   String _size(int size) => size < 1024
-      ? '$size B'
+      ? '‎$size B'
       : size < 1024 * 1024
-      ? '${(size / 1024).toStringAsFixed(0)} KB'
-      : '${(size / (1024 * 1024)).toStringAsFixed(1)} MB';
+      ? '‎${(size / 1024).toStringAsFixed(0)} KB'
+      : '‎${(size / (1024 * 1024)).toStringAsFixed(1)} MB';
 
   Future<void> _showAdd(BuildContext context) async {
     await showModalBottomSheet<void>(
@@ -457,14 +461,14 @@ class _ArchiveScreenState extends ConsumerState<ArchiveScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Text(
-                'Save something',
+                context.l10n.saveSomething,
                 style: Theme.of(context).textTheme.titleLarge
                     ?.copyWith(fontWeight: FontWeight.w700),
               ),
               const SizedBox(height: 14),
               _AddAction(
                 icon: Icons.edit_note,
-                title: 'Write a note or paste text',
+                title: context.l10n.writeNote,
                 onTap: () {
                   Navigator.pop(context);
                   _writeNote(context);
@@ -472,8 +476,8 @@ class _ArchiveScreenState extends ConsumerState<ArchiveScreen> {
               ),
               _AddAction(
                 icon: Icons.attach_file,
-                title: 'Choose files',
-                subtitle: 'Photos, videos, PDFs, and more',
+                title: context.l10n.chooseFiles,
+                subtitle: context.l10n.chooseFilesSubtitle,
                 onTap: () {
                   Navigator.pop(context);
                   _chooseFiles(context);
@@ -491,24 +495,22 @@ class _ArchiveScreenState extends ConsumerState<ArchiveScreen> {
     final value = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('New item'),
+        title: Text(context.l10n.newItem),
         content: TextField(
           controller: controller,
           autofocus: true,
           minLines: 3,
           maxLines: 7,
-          decoration: const InputDecoration(
-            hintText: 'Write or paste text or a link',
-          ),
+          decoration: InputDecoration(hintText: context.l10n.newItemHint),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
+            child: Text(context.l10n.cancel),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, controller.text),
-            child: const Text('Save'),
+            child: Text(context.l10n.save),
           ),
         ],
       ),
@@ -527,16 +529,12 @@ class _ArchiveScreenState extends ConsumerState<ArchiveScreen> {
           .importFiles(files);
       if (mounted)
         ScaffoldMessenger.of(this.context).showSnackBar(
-          SnackBar(
-            content: Text(
-              '$count file${count == 1 ? '' : 's'} saved to this device',
-            ),
-          ),
+          SnackBar(content: Text(this.context.l10n.filesSaved(count))),
         );
     } catch (error) {
       if (mounted)
         ScaffoldMessenger.of(this.context).showSnackBar(
-          SnackBar(content: Text('Could not import files: $error')),
+          SnackBar(content: Text(this.context.l10n.importFailed('$error'))),
         );
     }
   }
@@ -546,21 +544,21 @@ class _ArchiveScreenState extends ConsumerState<ArchiveScreen> {
     final name = await showDialog<String>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('New collection'),
+        title: Text(context.l10n.newCollection),
         content: TextField(
           controller: controller,
           autofocus: true,
-          decoration: const InputDecoration(labelText: 'Collection name'),
+          decoration: InputDecoration(labelText: context.l10n.collectionName),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Cancel'),
+            child: Text(context.l10n.cancel),
           ),
           FilledButton(
             onPressed: () =>
                 Navigator.pop(dialogContext, controller.text.trim()),
-            child: const Text('Create'),
+            child: Text(context.l10n.create),
           ),
         ],
       ),
@@ -573,7 +571,9 @@ class _ArchiveScreenState extends ConsumerState<ArchiveScreen> {
     } catch (error) {
       if (mounted)
         ScaffoldMessenger.of(this.context).showSnackBar(
-          SnackBar(content: Text('Could not create collection: $error')),
+          SnackBar(
+            content: Text(this.context.l10n.createCollectionFailed('$error')),
+          ),
         );
     }
   }

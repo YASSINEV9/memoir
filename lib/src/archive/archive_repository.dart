@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
+import 'package:sqflite/sqflite.dart' show ConflictAlgorithm;
 import 'package:uuid/uuid.dart';
 
 import 'archive_database.dart';
@@ -186,6 +187,9 @@ class ArchiveRepository {
     return true;
   }
 
+  /// Item type from a file name, as used when files are imported.
+  String typeFor(String name) => _typeFor(name);
+
   String _typeFor(String name) {
     final ext = p.extension(name).toLowerCase();
     if (['.jpg', '.jpeg', '.png', '.webp', '.gif'].contains(ext))
@@ -194,6 +198,93 @@ class ArchiveRepository {
     if (['.mp3', '.m4a', '.wav', '.ogg'].contains(ext)) return 'audio';
     if (ext == '.pdf') return 'pdf';
     return 'file';
+  }
+
+  Future<Set<String>> itemIds() async {
+    final db = await _source.database;
+    final rows = await db.query('archive_items', columns: ['id']);
+    return {for (final row in rows) row['id']! as String};
+  }
+
+  Future<Map<String, String>> collectionNames() async => {
+    for (final c in await collections()) c.id: c.name,
+  };
+
+  /// The local collection to restore into: the same id if it exists, else
+  /// one with the same name, else a new one recreated from the backup.
+  Future<String> ensureCollection(
+    String id,
+    String? name,
+    String fallback,
+  ) async {
+    final db = await _source.database;
+    if ((await db.query(
+      'collections',
+      where: 'id = ?',
+      whereArgs: [id],
+    )).isNotEmpty) {
+      return id;
+    }
+    final label = (name == null || name.trim().isEmpty) ? fallback : name;
+    final byName = await db.query(
+      'collections',
+      where: 'name = ?',
+      whereArgs: [label],
+    );
+    if (byName.isNotEmpty) return byName.first['id']! as String;
+    final rows = await db.rawQuery(
+      'SELECT COALESCE(MAX(position), -1) + 1 AS next FROM collections',
+    );
+    await db.insert('collections', {
+      'id': id,
+      'name': label,
+      'position': rows.first['next'],
+      'created_at': DateTime.now().millisecondsSinceEpoch,
+    });
+    return id;
+  }
+
+  /// Puts a backed-up item back with its original id and details, already
+  /// marked as backed up so it is not uploaded again.
+  Future<void> insertRestored({
+    required String id,
+    required String collection,
+    required String type,
+    required int createdAt,
+    required String driveId,
+    required String driveAccount,
+    String? body,
+    String? filename,
+    String? mimeType,
+    String? localPath,
+    int size = 0,
+    String? groupId,
+    bool favorite = false,
+    bool pinned = false,
+  }) async {
+    final db = await _source.database;
+    await db.transaction((txn) async {
+      final rows = await txn.rawQuery(
+        'SELECT COALESCE(MAX(position), -1) + 1 AS next FROM archive_items',
+      );
+      await txn.insert('archive_items', {
+        'id': id,
+        'collection_id': collection,
+        'type': type,
+        'body': body,
+        'filename': filename,
+        'mime_type': mimeType,
+        'local_path': localPath,
+        'size': size,
+        'group_id': groupId,
+        'created_at': createdAt,
+        'position': rows.first['next'],
+        'favorite': favorite ? 1 : 0,
+        'pinned': pinned ? 1 : 0,
+        'drive_id': driveId,
+        'drive_account': driveAccount,
+      }, conflictAlgorithm: ConflictAlgorithm.ignore);
+    });
   }
 
   Future<void> markBackedUp(

@@ -23,6 +23,9 @@ const _lastSuccessKey = 'backup_last_success';
 const _lastProblemKey = 'backup_last_problem';
 const _runningUntilKey = 'backup_running_until';
 
+/// The account whose Drive files all carry the restore details already.
+const _restoreInfoKey = 'backup_restore_info_account';
+
 /// How long one backup holds its claim. Refreshed after every uploaded item,
 /// and it expires by itself if Android stops the task partway through.
 const _leaseDuration = Duration(minutes: 15);
@@ -82,12 +85,18 @@ Future<BackupResult> runBackup(
   try {
     final account = drive.email ?? '';
     final items = await repository.list();
+    final names = await repository.collectionNames();
     final pending = pendingBackupItems(items, account);
     var uploaded = 0;
     var skipped = 0;
+    // Files uploaded by older versions lack the details a restore needs;
+    // list them once per account to add those details.
+    final backfill = prefs.getString(_restoreInfoKey) != account;
+    final known = pending.isNotEmpty || backfill
+        ? await drive.backedUpItems()
+        : const <String, String>{};
     if (pending.isNotEmpty) {
       onProgress?.call(0, pending.length);
-      final known = await drive.backedUpItems();
       var next = 0;
       // A few uploads in parallel are much faster than one at a time.
       Future<void> worker() async {
@@ -101,6 +110,7 @@ Future<BackupResult> runBackup(
               item,
               localFilePath: path,
               known: known,
+              collectionName: names[item.collection],
             );
             await repository.markBackedUp(item, driveId, account);
             uploaded++;
@@ -111,6 +121,23 @@ Future<BackupResult> runBackup(
       }
 
       await Future.wait(List.generate(4, (_) => worker()));
+    }
+    if (backfill) {
+      final byId = {for (final item in items) item.id: item};
+      final missing = drive.missingRestoreInfo.toList();
+      var next = 0;
+      Future<void> worker() async {
+        while (next < missing.length) {
+          final item = byId[missing[next++]];
+          final fileId = item == null ? null : known[item.id];
+          if (item == null || fileId == null) continue;
+          await drive.updateRestoreInfo(fileId, item, names[item.collection]);
+          await holdLease();
+        }
+      }
+
+      await Future.wait(List.generate(4, (_) => worker()));
+      await prefs.setString(_restoreInfoKey, account);
     }
     await prefs.setInt(_lastSuccessKey, DateTime.now().millisecondsSinceEpoch);
     await prefs.remove(_lastProblemKey);
@@ -229,38 +256,36 @@ Future<bool> runAutomaticBackup() async {
   if (!(prefs.getBool(_enabledKey) ?? false)) return true;
   final drive = GoogleDriveProvider();
   var finished = true;
-  Future<void> problem(String message) =>
-      prefs.setString(_lastProblemKey, message);
+  // Saved as a code; the Drive screen shows it in the app's language.
+  Future<void> problem(String code) => prefs.setString(_lastProblemKey, code);
   try {
     if (await drive.restore()) {
       await runBackup(drive, ArchiveRepository(ArchiveDatabase.instance));
     } else {
-      await problem(const DriveReconnectRequired().toString());
+      await problem('reconnect');
     }
-  } on DriveReconnectRequired catch (error) {
-    await problem(error.toString());
+  } on DriveReconnectRequired {
+    await problem('reconnect');
   } on BackupBusy {
     finished = false;
   } on SocketException {
-    await problem('No internet connection. Memoir will retry automatically.');
+    await problem('offline');
     finished = false;
   } on TimeoutException {
-    await problem('The connection timed out. Memoir will retry automatically.');
+    await problem('timeout');
     finished = false;
   } on http.ClientException {
-    await problem('The connection failed. Memoir will retry automatically.');
+    await problem('connection');
     finished = false;
   } on HttpException catch (error) {
-    await problem('$error Memoir will retry automatically.');
+    await problem('retry:$error');
     finished = false;
   } on GoogleSignInException {
-    await problem(
-      'Google could not be reached. Memoir will retry automatically.',
-    );
+    await problem('google');
     finished = false;
   } catch (error) {
     // Retrying right away will not help, for example when Drive is full.
-    await problem('$error');
+    await problem('error:$error');
   } finally {
     drive.dispose();
   }

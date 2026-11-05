@@ -14,6 +14,8 @@ import '../../main.dart';
 import '../cloud/cloud_storage_provider.dart';
 import '../cloud/auto_backup.dart';
 import '../cloud/google_drive_provider.dart';
+import '../cloud/restore.dart';
+import '../l10n.dart';
 
 class CloudScreen extends ConsumerStatefulWidget {
   const CloudScreen({super.key});
@@ -35,6 +37,12 @@ class _CloudScreenState extends ConsumerState<CloudScreen> {
   TimeOfDay _backupTime = const TimeOfDay(hour: 2, minute: 0);
   DateTime? _lastBackup;
   String? _backupProblem;
+
+  /// Items in Drive that are not on this phone (after a reinstall).
+  List<RemoteBackupItem> _restorable = const [];
+
+  /// (done, total) while a restore is running.
+  (int, int)? _restoreProgress;
 
   @override
   void initState() {
@@ -89,11 +97,86 @@ class _CloudScreenState extends ConsumerState<CloudScreen> {
   Future<void> _restoreGoogleAccount() async {
     try {
       if (!_drive.isConnected) await _drive.restore();
-      if (_drive.isConnected) _files = await _drive.list();
+      if (_drive.isConnected) {
+        _files = await _drive.list();
+        _restorable = await findRestorableItems(
+          _drive,
+          ref.read(repositoryProvider),
+        );
+      }
     } catch (error) {
-      _error = _friendlyError(error);
+      if (mounted) _error = _friendlyError(error);
     }
     if (mounted) setState(() => _loading = false);
+  }
+
+  Future<void> _restore() => _run(() async {
+    final items = _restorable;
+    final int restored;
+    try {
+      restored = await restoreItems(
+        _drive,
+        ref.read(repositoryProvider),
+        items,
+        fallbackCollectionName: context.l10n.restoredCollection,
+        onProgress: (done, total) {
+          if (mounted) setState(() => _restoreProgress = (done, total));
+        },
+      );
+    } finally {
+      if (mounted) setState(() => _restoreProgress = null);
+    }
+    ref.invalidate(archiveControllerProvider);
+    final remaining = await findRestorableItems(
+      _drive,
+      ref.read(repositoryProvider),
+    );
+    if (!mounted) return;
+    setState(() => _restorable = remaining);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(context.l10n.restoredCount(restored))),
+    );
+  });
+
+  /// After signing in, offers to bring back what this account saved before.
+  Future<void> _offerRestore() async {
+    if (_restorable.isEmpty || !mounted) return;
+    final l10n = context.l10n;
+    final restore = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        icon: const Icon(Icons.cloud_download_outlined),
+        title: Text(l10n.restoreFoundTitle(_restorable.length)),
+        content: Text(l10n.restoreFoundBody),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(l10n.notNow),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(l10n.restore),
+          ),
+        ],
+      ),
+    );
+    if (restore == true) await _restore();
+  }
+
+  /// Background backup problems are saved as codes (see auto_backup.dart).
+  String _problemText(String code) {
+    final l10n = context.l10n;
+    return switch (code) {
+      'reconnect' => l10n.reconnectRequired,
+      'offline' => l10n.problemOffline,
+      'timeout' => l10n.problemTimeout,
+      'connection' => l10n.problemConnectionFailed,
+      'google' => l10n.problemGoogleUnreachable,
+      _ when code.startsWith('retry:') => l10n.problemRetry(code.substring(6)),
+      _ when code.startsWith('error:') => code.substring(6),
+      // Saved as text by an earlier version.
+      _ => code,
+    };
   }
 
   Future<void> _run(Future<void> Function() action) async {
@@ -112,37 +195,37 @@ class _CloudScreenState extends ConsumerState<CloudScreen> {
   }
 
   String _friendlyError(Object error) {
+    final l10n = context.l10n;
     if (error is GoogleSignInException && isGoogleNetworkFailure(error)) {
-      return 'No internet connection. Check your connection and try again.';
+      return l10n.noInternet;
     }
     if (error is GoogleSignInException) {
       final details = error.description == null
           ? ''
           : ' (${error.description})';
       return switch (error.code) {
-        // Credential Manager also reports a SHA-1/package mismatch or a
-        // non-test account as "canceled", so do not claim the user cancelled.
-        GoogleSignInExceptionCode.canceled =>
-          'Google sign-in was closed or rejected. If you did not cancel it, '
-              'check that this account is a test user and that the app\'s '
-              'SHA-1 is registered in Google Cloud Console.$details',
+        // Credential Manager also reports a SHA-1/package mismatch as
+        // "canceled", so do not claim the user cancelled.
+        GoogleSignInExceptionCode.canceled => l10n.signInClosed(details),
         GoogleSignInExceptionCode.clientConfigurationError ||
         GoogleSignInExceptionCode.providerConfigurationError =>
-          'Google sign-in is misconfigured (OAuth client / SHA-1).$details',
-        GoogleSignInExceptionCode.uiUnavailable =>
-          'Google sign-in could not show its window. Try again.$details',
-        GoogleSignInExceptionCode.interrupted =>
-          'Google sign-in was interrupted. Try again.$details',
-        _ => 'Google sign-in failed: ${error.code.name}$details',
+          l10n.signInMisconfigured(details),
+        GoogleSignInExceptionCode.uiUnavailable => l10n.signInUiUnavailable(
+          details,
+        ),
+        GoogleSignInExceptionCode.interrupted => l10n.signInInterrupted(
+          details,
+        ),
+        _ => l10n.signInFailed(error.code.name, details),
       };
     }
+    if (error is DriveReconnectRequired) return l10n.reconnectRequired;
+    if (error is BackupBusy) return l10n.backupBusy;
     if (error is SocketException || error is http.ClientException) {
-      return 'No internet connection. Check your connection and try again.';
+      return l10n.noInternet;
     }
     final text = error.toString().replaceFirst(RegExp(r'^\w+Exception: '), '');
-    if (text.contains('access_denied')) {
-      return 'Google Drive permission was denied.';
-    }
+    if (text.contains('access_denied')) return l10n.drivePermissionDenied;
     return text;
   }
 
@@ -157,13 +240,20 @@ class _CloudScreenState extends ConsumerState<CloudScreen> {
       );
     }
     await _loadBackupSchedule();
+    final restorable = await findRestorableItems(
+      _drive,
+      ref.read(repositoryProvider),
+    );
     if (mounted) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Connected to ${_drive.email}')));
-      setState(() => _files = files);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.l10n.connectedTo(_drive.email ?? ''))),
+      );
+      setState(() {
+        _files = files;
+        _restorable = restorable;
+      });
     }
-  });
+  }).then((_) => _offerRestore());
 
   Future<void> _disconnect() => _run(() async {
     // Clear the schedule first: disconnect reports an error if revoking fails
@@ -177,6 +267,7 @@ class _CloudScreenState extends ConsumerState<CloudScreen> {
       setState(() {
         _automaticBackup = false;
         _files = const [];
+        _restorable = const [];
       });
     }
     await _drive.disconnect();
@@ -207,10 +298,12 @@ class _CloudScreenState extends ConsumerState<CloudScreen> {
       SnackBar(
         content: Text(
           uploaded == 0 && skipped == 0
-              ? 'Everything is already backed up'
-              : 'Backed up $uploaded new item${uploaded == 1 ? '' : 's'}'
-                    '${upToDate == 0 ? '' : ' · $upToDate already up to date'}'
-                    '${skipped == 0 ? '' : ' · skipped $skipped missing file${skipped == 1 ? '' : 's'}'}',
+              ? context.l10n.everythingBackedUp
+              : [
+                  context.l10n.backedUpNew(uploaded),
+                  if (upToDate > 0) context.l10n.alreadyUpToDate(upToDate),
+                  if (skipped > 0) context.l10n.skippedMissing(skipped),
+                ].join(' · '),
         ),
       ),
     );
@@ -221,6 +314,7 @@ class _CloudScreenState extends ConsumerState<CloudScreen> {
   });
 
   Future<void> _download(RemoteArchiveFile file) => _run(() async {
+    final dialogTitle = context.l10n.exportFromMemoir;
     final directory = await getApplicationDocumentsDirectory();
     final safeName = p
         .basename(file.name)
@@ -231,7 +325,7 @@ class _CloudScreenState extends ConsumerState<CloudScreen> {
     final saved = await FilePicker.saveFile(
       fileName: safeName,
       bytes: bytes,
-      dialogTitle: 'Export from Memoir',
+      dialogTitle: dialogTitle,
     );
     await File(destination).delete();
     if (mounted) {
@@ -239,8 +333,8 @@ class _CloudScreenState extends ConsumerState<CloudScreen> {
         SnackBar(
           content: Text(
             saved == null
-                ? 'Export cancelled.'
-                : 'Saved for transfer: $safeName',
+                ? context.l10n.exportCancelled
+                : context.l10n.savedForTransfer(safeName),
           ),
         ),
       );
@@ -250,8 +344,9 @@ class _CloudScreenState extends ConsumerState<CloudScreen> {
   @override
   Widget build(BuildContext context) {
     final connected = _drive.isConnected;
+    final l10n = context.l10n;
     return Scaffold(
-      appBar: AppBar(title: const Text('Google Drive')),
+      appBar: AppBar(title: Text(l10n.navDrive)),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 4, 16, 28),
         children: [
@@ -268,19 +363,17 @@ class _CloudScreenState extends ConsumerState<CloudScreen> {
                         color: Theme.of(context).colorScheme.primary,
                       ),
                       const SizedBox(width: 10),
-                      const Text(
-                        'This device',
-                        style: TextStyle(fontWeight: FontWeight.w700),
+                      Text(
+                        l10n.thisDevice,
+                        style: const TextStyle(fontWeight: FontWeight.w700),
                       ),
                     ],
                   ),
                   const SizedBox(height: 8),
-                  const Text(
-                    'Your archive is saved locally and remains available offline.',
-                  ),
+                  Text(l10n.localAvailable),
                   const SizedBox(height: 10),
-                  const _StatusPill(
-                    label: 'Available',
+                  _StatusPill(
+                    label: l10n.available,
                     icon: Icons.check_circle_outline,
                   ),
                 ],
@@ -289,7 +382,7 @@ class _CloudScreenState extends ConsumerState<CloudScreen> {
           ),
           const SizedBox(height: 18),
           Text(
-            'Your backup',
+            l10n.yourBackup,
             style: Theme.of(context).textTheme.titleMedium
                 ?.copyWith(fontWeight: FontWeight.w700),
           ),
@@ -308,10 +401,10 @@ class _CloudScreenState extends ConsumerState<CloudScreen> {
                         color: Theme.of(context).colorScheme.primary,
                       ),
                       const SizedBox(width: 12),
-                      const Expanded(
+                      Expanded(
                         child: Text(
-                          'Google Drive',
-                          style: TextStyle(fontWeight: FontWeight.w700),
+                          l10n.navDrive,
+                          style: const TextStyle(fontWeight: FontWeight.w700),
                         ),
                       ),
                       if (_loading || _busy)
@@ -323,10 +416,10 @@ class _CloudScreenState extends ConsumerState<CloudScreen> {
                       else
                         _StatusPill(
                           label: connected
-                              ? 'Connected'
+                              ? l10n.connected
                               : _drive.needsReconnect
-                              ? 'Reconnect needed'
-                              : 'Not connected',
+                              ? l10n.reconnectNeeded
+                              : l10n.notConnected,
                           icon: connected ? Icons.link : Icons.link_off,
                         ),
                     ],
@@ -338,31 +431,31 @@ class _CloudScreenState extends ConsumerState<CloudScreen> {
                     SwitchListTile(
                       contentPadding: EdgeInsets.zero,
                       secondary: const Icon(Icons.backup_outlined),
-                      title: const Text('Automatic backup'),
-                      subtitle: const Text(
-                        'Upload new items daily when internet is available',
-                      ),
+                      title: Text(l10n.automaticBackup),
+                      subtitle: Text(l10n.automaticBackupSubtitle),
                       value: _automaticBackup,
                       onChanged: _setAutomaticBackup,
                     ),
                     ListTile(
                       contentPadding: EdgeInsets.zero,
                       leading: const Icon(Icons.schedule_outlined),
-                      title: const Text('Backup time'),
+                      title: Text(l10n.backupTime),
                       subtitle: Text(_backupTime.format(context)),
                       trailing: const Icon(Icons.chevron_right),
                       onTap: _chooseBackupTime,
                     ),
                     Text(
                       _lastBackup == null
-                          ? 'Last backup: not yet'
-                          : 'Last backup: ${DateFormat.yMMMd().add_Hm().format(_lastBackup!)}',
+                          ? l10n.lastBackupNever
+                          : l10n.lastBackupAt(
+                              DateFormat.yMMMd().add_Hm().format(_lastBackup!),
+                            ),
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
                     if (_backupProblem != null) ...[
                       const SizedBox(height: 4),
                       Text(
-                        _backupProblem!,
+                        _problemText(_backupProblem!),
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           color: Theme.of(context).colorScheme.error,
                         ),
@@ -372,13 +465,8 @@ class _CloudScreenState extends ConsumerState<CloudScreen> {
                       const SizedBox(height: 4),
                       Text(
                         defaultTargetPlatform == TargetPlatform.iOS
-                            ? 'iOS does not let apps run at a chosen time. '
-                                  'The backup runs the next time you open '
-                                  'Memoir after this time.'
-                            : 'Android may run this later than the chosen '
-                                  'time to save battery, or wait until the '
-                                  'phone is online. Force-stopping Memoir '
-                                  'pauses it until you open the app again.',
+                            ? l10n.iosScheduleNote
+                            : l10n.androidScheduleNote,
                         style: Theme.of(context).textTheme.bodySmall,
                       ),
                     ],
@@ -390,17 +478,17 @@ class _CloudScreenState extends ConsumerState<CloudScreen> {
                         OutlinedButton.icon(
                           onPressed: _busy ? null : _refreshFiles,
                           icon: const Icon(Icons.refresh),
-                          label: const Text('Show Drive files'),
+                          label: Text(l10n.showDriveFiles),
                         ),
                         FilledButton.icon(
                           onPressed: _busy ? null : _backupArchive,
                           icon: const Icon(Icons.cloud_upload_outlined),
-                          label: const Text('Back up archive'),
+                          label: Text(l10n.backUpArchive),
                         ),
                         TextButton.icon(
                           onPressed: _busy ? null : _disconnect,
                           icon: const Icon(Icons.logout),
-                          label: const Text('Disconnect'),
+                          label: Text(l10n.disconnect),
                         ),
                       ],
                     ),
@@ -408,10 +496,7 @@ class _CloudScreenState extends ConsumerState<CloudScreen> {
                     const SizedBox(height: 8),
                     Text(_drive.email ?? ''),
                     const SizedBox(height: 8),
-                    const Text(
-                      'Your Google session expired or Drive access was removed. '
-                      'Reconnect to continue backing up.',
-                    ),
+                    Text(l10n.reconnectRequired),
                     const SizedBox(height: 12),
                     Wrap(
                       spacing: 8,
@@ -420,25 +505,23 @@ class _CloudScreenState extends ConsumerState<CloudScreen> {
                         FilledButton.icon(
                           onPressed: _loading || _busy ? null : _connect,
                           icon: const Icon(Icons.login),
-                          label: const Text('Reconnect'),
+                          label: Text(l10n.reconnect),
                         ),
                         TextButton.icon(
                           onPressed: _busy ? null : _disconnect,
                           icon: const Icon(Icons.logout),
-                          label: const Text('Disconnect'),
+                          label: Text(l10n.disconnect),
                         ),
                       ],
                     ),
                   ] else ...[
                     const SizedBox(height: 8),
-                    const Text(
-                      'Choose a Google account to create your Memoir folders and approve Drive access.',
-                    ),
+                    Text(l10n.connectPrompt),
                     const SizedBox(height: 12),
                     FilledButton.icon(
                       onPressed: _loading || _busy ? null : _connect,
                       icon: const Icon(Icons.login),
-                      label: const Text('Continue with Google'),
+                      label: Text(l10n.continueWithGoogle),
                     ),
                   ],
                   if (_progress case (final done, final total)) ...[
@@ -447,7 +530,15 @@ class _CloudScreenState extends ConsumerState<CloudScreen> {
                       value: total == 0 ? null : done / total,
                     ),
                     const SizedBox(height: 6),
-                    Text('Backing up $done of $total…'),
+                    Text(l10n.backingUpProgress(done, total)),
+                  ],
+                  if (_restoreProgress case (final done, final total)) ...[
+                    const SizedBox(height: 12),
+                    LinearProgressIndicator(
+                      value: total == 0 ? null : done / total,
+                    ),
+                    const SizedBox(height: 6),
+                    Text(l10n.restoringProgress(done, total)),
                   ],
                   if (_error != null) ...[
                     const SizedBox(height: 10),
@@ -462,6 +553,40 @@ class _CloudScreenState extends ConsumerState<CloudScreen> {
               ),
             ),
           ),
+          if (connected && _restorable.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Card(
+              color: Theme.of(context).colorScheme.primaryContainer,
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.cloud_download_outlined),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            l10n.restoreFoundTitle(_restorable.length),
+                            style: const TextStyle(fontWeight: FontWeight.w700),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(l10n.restoreFoundBody),
+                    const SizedBox(height: 12),
+                    FilledButton.icon(
+                      onPressed: _busy ? null : _restore,
+                      icon: const Icon(Icons.restore_rounded),
+                      label: Text(l10n.restore),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
           if (connected) ...[
             const SizedBox(height: 16),
             Card(
@@ -470,9 +595,9 @@ class _CloudScreenState extends ConsumerState<CloudScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'Organized in your Drive',
-                      style: TextStyle(fontWeight: FontWeight.w700),
+                    Text(
+                      l10n.organizedInDrive,
+                      style: const TextStyle(fontWeight: FontWeight.w700),
                     ),
                     const SizedBox(height: 8),
                     Text(
@@ -480,9 +605,7 @@ class _CloudScreenState extends ConsumerState<CloudScreen> {
                       style: Theme.of(context).textTheme.bodyMedium,
                     ),
                     const SizedBox(height: 12),
-                    const Text(
-                      'To transfer accounts, export these files to your device, connect the other Google account, import them from “Add to vault”, then back up the archive.',
-                    ),
+                    Text(l10n.transferHint),
                   ],
                 ),
               ),
@@ -491,7 +614,7 @@ class _CloudScreenState extends ConsumerState<CloudScreen> {
           if (_files.isNotEmpty) ...[
             const SizedBox(height: 14),
             Text(
-              'Drive files (${_files.length})',
+              l10n.driveFilesCount(_files.length),
               style: Theme.of(context).textTheme.titleMedium
                   ?.copyWith(fontWeight: FontWeight.w700),
             ),
@@ -508,10 +631,10 @@ class _CloudScreenState extends ConsumerState<CloudScreen> {
                     overflow: TextOverflow.ellipsis,
                   ),
                   subtitle: Text(
-                    '${file.category} · ${_formatSize(file.size)} · ${file.modifiedAt.toLocal()}',
+                    '${file.category} · ${_formatSize(file.size)} · ${DateFormat.yMMMd().add_Hm().format(file.modifiedAt.toLocal())}',
                   ),
                   trailing: IconButton(
-                    tooltip: 'Download',
+                    tooltip: l10n.download,
                     onPressed: _busy ? null : () => _download(file),
                     icon: const Icon(Icons.download_outlined),
                   ),
@@ -520,18 +643,14 @@ class _CloudScreenState extends ConsumerState<CloudScreen> {
             ),
           ] else if (connected) ...[
             const SizedBox(height: 8),
-            const Text(
-              'Choose “Show Drive files” to see everything backed up by Memoir.',
-            ),
+            Text(l10n.showDriveFilesHint),
           ],
           const SizedBox(height: 12),
           Card(
             color: Theme.of(context).colorScheme.surfaceContainerHighest,
-            child: const Padding(
-              padding: EdgeInsets.all(16),
-              child: Text(
-                'Your archive is stored under Memoir in your Google Drive. Sign in to another Google account to create a separate, neatly organized archive there.',
-              ),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Text(l10n.driveStorageNote),
             ),
           ),
         ],
@@ -541,10 +660,10 @@ class _CloudScreenState extends ConsumerState<CloudScreen> {
   }
 
   String _formatSize(int size) => size < 1024
-      ? '$size B'
+      ? '‎$size B'
       : size < 1024 * 1024
-      ? '${(size / 1024).toStringAsFixed(0)} KB'
-      : '${(size / (1024 * 1024)).toStringAsFixed(1)} MB';
+      ? '‎${(size / 1024).toStringAsFixed(0)} KB'
+      : '‎${(size / (1024 * 1024)).toStringAsFixed(1)} MB';
   IconData _iconForCategory(String category) => switch (category) {
     'Photos' => Icons.image_outlined,
     'Videos' => Icons.video_file_outlined,

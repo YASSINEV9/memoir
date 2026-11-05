@@ -11,12 +11,15 @@ import 'package:path/path.dart' as p;
 import '../../main.dart';
 import '../archive/archive_item.dart';
 import '../chat/chat_style.dart';
+import '../l10n.dart';
+import '../media_actions.dart';
+import 'video_player_screen.dart';
 
 /// One collection shown as a chat, styled after the app it archives.
 class ChatScreen extends ConsumerStatefulWidget {
-  const ChatScreen({required this.collectionId, required this.name, super.key});
+  const ChatScreen({required this.collectionId, this.name, super.key});
   final String collectionId;
-  final String name;
+  final String? name;
 
   @override
   ConsumerState<ChatScreen> createState() => _ChatScreenState();
@@ -78,7 +81,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Could not import files: $error')),
+          SnackBar(content: Text(context.l10n.importFailed('$error'))),
         );
       }
     }
@@ -89,6 +92,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     List<ArchiveItem> group = const [],
   }) async {
     final media = item.type == 'image' || item.type == 'video';
+    final hasFile =
+        item.localPath != null && File(item.localPath!).existsSync();
+    final l10n = context.l10n;
     final action = await showModalBottomSheet<String>(
       context: context,
       showDragHandle: true,
@@ -97,37 +103,53 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             if (item.body != null)
-              _action(context, Icons.copy_rounded, 'Copy', 'copy'),
+              _action(context, Icons.copy_rounded, l10n.copy, 'copy'),
+            if (item.type == 'video' && hasFile)
+              _action(context, Icons.play_circle_outline, l10n.play, 'play'),
+            if (hasFile && item.type != 'image')
+              _action(
+                context,
+                Icons.open_in_new_rounded,
+                l10n.openWith,
+                'open_with',
+              ),
+            if (item.driveId != null && item.localPath != null)
+              _action(
+                context,
+                Icons.add_to_drive_outlined,
+                l10n.openInDrive,
+                'open_drive',
+              ),
             if (item.localPath != null)
               _action(
                 context,
                 Icons.download_rounded,
-                media ? 'Save to gallery' : 'Save to device',
+                media ? l10n.saveToGallery : l10n.saveToDevice,
                 'save',
               ),
             if (group.length > 1)
               _action(
                 context,
                 Icons.download_for_offline_outlined,
-                'Save all ${group.length} to gallery',
+                l10n.saveAllToGallery(group.length),
                 'save_all',
               ),
             _action(
               context,
               item.pinned ? Icons.push_pin_outlined : Icons.push_pin_rounded,
-              item.pinned ? 'Unpin' : 'Pin',
+              item.pinned ? l10n.unpin : l10n.pin,
               'pin',
             ),
             _action(
               context,
               item.favorite ? Icons.star_outline_rounded : Icons.star_rounded,
-              item.favorite ? 'Remove favorite' : 'Favorite',
+              item.favorite ? l10n.removeFavorite : l10n.favorite,
               'favorite',
             ),
             _action(
               context,
               Icons.delete_outline_rounded,
-              'Delete',
+              l10n.delete,
               'delete',
               color: Theme.of(context).colorScheme.error,
             ),
@@ -147,6 +169,15 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       case 'save_all':
         await _save(group);
         return;
+      case 'play':
+        _openViewer(item);
+        return;
+      case 'open_with':
+        await openWithOtherApp(context, item);
+        return;
+      case 'open_drive':
+        await openInDrive(context, item);
+        return;
       case 'pin':
         await repo.setFlag(item, 'pinned', !item.pinned);
       case 'favorite':
@@ -155,19 +186,16 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         final confirmed = await showDialog<bool>(
           context: context,
           builder: (context) => AlertDialog(
-            title: const Text('Delete message?'),
-            content: const Text(
-              'It will be removed from this device. A copy already backed up '
-              'to Google Drive is not deleted.',
-            ),
+            title: Text(l10n.deleteTitle),
+            content: Text(l10n.deleteBody),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context, false),
-                child: const Text('Cancel'),
+                child: Text(l10n.cancel),
               ),
               FilledButton(
                 onPressed: () => Navigator.pop(context, true),
-                child: const Text('Delete'),
+                child: Text(l10n.delete),
               ),
             ],
           ),
@@ -189,7 +217,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         if (item.type == 'image' || item.type == 'video') {
           if (!await Gal.hasAccess(toAlbum: true) &&
               !await Gal.requestAccess(toAlbum: true)) {
-            _toast('Allow Memoir to access your photos to save them.');
+            if (mounted) _toast(context.l10n.allowPhotos);
             return;
           }
           item.type == 'image'
@@ -204,11 +232,16 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         }
         saved++;
       }
-      _toast(saved == 0 ? 'Nothing was saved' : 'Saved $saved to your device');
+      if (!mounted) return;
+      _toast(
+        saved == 0
+            ? context.l10n.nothingSaved
+            : context.l10n.savedToDevice(saved),
+      );
     } on GalException catch (error) {
-      _toast('Could not save: ${error.type.message}');
+      if (mounted) _toast(context.l10n.saveFailed(error.type.message));
     } catch (error) {
-      _toast('Could not save: $error');
+      if (mounted) _toast(context.l10n.saveFailed('$error'));
     }
   }
 
@@ -220,6 +253,18 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 
   void _openViewer(ArchiveItem item) {
+    if (item.type == 'video') {
+      if (item.localPath == null || !File(item.localPath!).existsSync()) {
+        return;
+      }
+      Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) =>
+              VideoPlayerScreen(item: item, onSave: (i) => _save([i])),
+        ),
+      );
+      return;
+    }
     // Oldest first, so swiping forward moves forward in time like the chat.
     final images = _items.reversed
         .where(
@@ -293,7 +338,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      widget.name,
+                      widget.name ?? context.l10n.chat,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
@@ -302,7 +347,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                       ),
                     ),
                     Text(
-                      '${_items.length} saved',
+                      context.l10n.savedInChat(_items.length),
                       style: TextStyle(
                         fontSize: 13,
                         color: style.appBarForeground.withValues(alpha: .7),
@@ -415,6 +460,7 @@ class _Bubble extends StatelessWidget {
     );
     final file = item.localPath == null ? null : File(item.localPath!);
     final isImage = item.type == 'image' && (file?.existsSync() ?? false);
+    final isVideo = item.type == 'video' && (file?.existsSync() ?? false);
     final tailSpace = style.tail == TailSide.none ? 0.0 : 7.0;
 
     // Messenger and Instagram show times only between messages.
@@ -470,6 +516,10 @@ class _Bubble extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.end,
         mainAxisSize: MainAxisSize.min,
         children: [
+          if (isVideo) ...[
+            _VideoTile(radius: style.radius - 3),
+            const SizedBox(height: 6),
+          ],
           _FileRow(item: item, style: style),
           if (showMeta) const SizedBox(height: 2),
           if (showMeta) meta,
@@ -508,7 +558,7 @@ class _Bubble extends StatelessWidget {
           maxWidth: MediaQuery.sizeOf(context).width * .8,
         ),
         child: GestureDetector(
-          onTap: isImage ? onTap : null,
+          onTap: isImage || isVideo ? onTap : null,
           onLongPress: onLongPress,
           child: Container(
             margin: const EdgeInsets.only(bottom: 4, top: 2),
@@ -570,7 +620,7 @@ class _FileRow extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                item.filename ?? 'File',
+                item.filename ?? context.l10n.file,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
@@ -591,10 +641,10 @@ class _FileRow extends StatelessWidget {
   }
 
   static String _size(int size) => size < 1024
-      ? '$size B'
+      ? '‎$size B'
       : size < 1024 * 1024
-      ? '${(size / 1024).toStringAsFixed(0)} KB'
-      : '${(size / (1024 * 1024)).toStringAsFixed(1)} MB';
+      ? '‎${(size / 1024).toStringAsFixed(0)} KB'
+      : '‎${(size / (1024 * 1024)).toStringAsFixed(1)} MB';
 }
 
 class _LinkCard extends StatelessWidget {
@@ -641,10 +691,10 @@ class _DateChip extends StatelessWidget {
     final now = DateTime.now();
     final label =
         date.year == now.year && date.month == now.month && date.day == now.day
-        ? 'Today'
+        ? context.l10n.today
         : date.year == now.year
-        ? DateFormat('MMMM d').format(date)
-        : DateFormat('MMMM d, y').format(date);
+        ? DateFormat.MMMMd().format(date)
+        : DateFormat.yMMMMd().format(date);
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Container(
@@ -688,7 +738,7 @@ class _PinnedBar extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Pinned message',
+                    context.l10n.pinnedMessage,
                     style: TextStyle(
                       color: style.accent,
                       fontWeight: FontWeight.w600,
@@ -696,7 +746,7 @@ class _PinnedBar extends StatelessWidget {
                     ),
                   ),
                   Text(
-                    item.body ?? item.filename ?? 'Attachment',
+                    item.body ?? item.filename ?? context.l10n.attachment,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(fontSize: 14),
@@ -725,24 +775,28 @@ class _EmptyChat extends StatelessWidget {
         color: Colors.black.withValues(alpha: .18),
         borderRadius: BorderRadius.circular(20),
       ),
-      child: const Column(
+      child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.bookmark_add_outlined, color: Colors.white, size: 44),
-          SizedBox(height: 10),
+          const Icon(
+            Icons.bookmark_add_outlined,
+            color: Colors.white,
+            size: 44,
+          ),
+          const SizedBox(height: 10),
           Text(
-            'No messages here yet',
-            style: TextStyle(
+            context.l10n.emptyChatTitle,
+            style: const TextStyle(
               color: Colors.white,
               fontWeight: FontWeight.w600,
               fontSize: 16,
             ),
           ),
-          SizedBox(height: 4),
+          const SizedBox(height: 4),
           Text(
-            'Type a message or attach files to save them.',
+            context.l10n.emptyChatBody,
             textAlign: TextAlign.center,
-            style: TextStyle(color: Colors.white70),
+            style: const TextStyle(color: Colors.white70),
           ),
         ],
       ),
@@ -777,7 +831,11 @@ class _Composer extends StatelessWidget {
       decoration: InputDecoration(
         isDense: true,
         border: InputBorder.none,
-        hintText: style.hint,
+        hintText: switch (style.hint) {
+          'Message' => context.l10n.composerMessage,
+          'Message...' => context.l10n.composerMessageEllipsis,
+          final hint => hint,
+        },
         hintStyle: TextStyle(color: style.composerHint, fontSize: 16),
         contentPadding: const EdgeInsets.symmetric(vertical: 10),
       ),
@@ -908,7 +966,7 @@ class _Composer extends StatelessWidget {
                 TextButton(
                   onPressed: onSend,
                   child: Text(
-                    'Send',
+                    context.l10n.send,
                     style: TextStyle(
                       color: style.accent,
                       fontWeight: FontWeight.w600,
@@ -1128,7 +1186,7 @@ class _AlbumBubble extends StatelessWidget {
                     child: Text(
                       style.outgoingGradient == null
                           ? time
-                          : '${items.length} photos',
+                          : context.l10n.photosCount(items.length),
                       style: const TextStyle(
                         fontSize: 11.5,
                         color: Colors.white,
@@ -1213,19 +1271,20 @@ class _MediaViewerState extends State<_MediaViewer> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              '${_index + 1} of ${widget.items.length}',
+              context.l10n.viewerPosition(_index + 1, widget.items.length),
               style: const TextStyle(fontSize: 17),
             ),
             Text(
-              DateFormat('MMM d, HH:mm')
-                  .format(DateTime.fromMillisecondsSinceEpoch(item.createdAt)),
+              DateFormat.MMMd().add_Hm().format(
+                DateTime.fromMillisecondsSinceEpoch(item.createdAt),
+              ),
               style: const TextStyle(fontSize: 13, color: Colors.white70),
             ),
           ],
         ),
         actions: [
           IconButton(
-            tooltip: 'Save to gallery',
+            tooltip: context.l10n.saveToGallery,
             onPressed: () => widget.onSave(item),
             icon: const Icon(Icons.download_rounded),
           ),
@@ -1242,4 +1301,26 @@ class _MediaViewerState extends State<_MediaViewer> {
       ),
     );
   }
+}
+
+/// Video preview in a bubble: a dark 16:9 frame with a play button.
+class _VideoTile extends StatelessWidget {
+  const _VideoTile({required this.radius});
+  final double radius;
+
+  @override
+  Widget build(BuildContext context) => ClipRRect(
+    borderRadius: BorderRadius.circular(radius),
+    child: Container(
+      width: 240,
+      height: 135,
+      color: Colors.black87,
+      alignment: Alignment.center,
+      child: const CircleAvatar(
+        radius: 26,
+        backgroundColor: Colors.black54,
+        child: Icon(Icons.play_arrow_rounded, color: Colors.white, size: 36),
+      ),
+    ),
+  );
 }

@@ -28,6 +28,30 @@ bool isGoogleNetworkFailure(GoogleSignInException error) => RegExp(
   caseSensitive: false,
 ).hasMatch(error.description ?? '');
 
+/// A Memoir item found in Drive, with what is needed to restore it.
+class RemoteBackupItem {
+  const RemoteBackupItem({
+    required this.fileId,
+    required this.itemId,
+    required this.name,
+    required this.mimeType,
+    required this.createdTime,
+    required this.properties,
+  });
+  final String fileId;
+  final String itemId;
+  final String name;
+  final String mimeType;
+  final DateTime createdTime;
+
+  /// Drive appProperties; see [GoogleDriveProvider.restoreProperties].
+  final Map<String, String> properties;
+
+  /// Text items are uploaded as `memory-vault-<id>.json`.
+  bool get isTextRecord =>
+      mimeType == 'application/json' && name == 'memory-vault-$itemId.json';
+}
+
 /// Google Drive connector. The Web OAuth client ID is a public identifier and
 /// is used as serverClientId for Android's native Google Sign-In flow.
 class GoogleDriveProvider implements CloudStorageProvider {
@@ -55,6 +79,10 @@ class GoogleDriveProvider implements CloudStorageProvider {
   bool _needsReconnect = false;
   String? _rootFolderId;
   final Map<String, String> _categoryFolders = {};
+
+  /// Backed-up item ids whose Drive file lacks the restore details, filled
+  /// by [backedUpItems] so a backup can add them.
+  final Set<String> missingRestoreInfo = {};
   Future<void>? _folders;
   String? _token;
   DateTime _tokenExpiry = DateTime.fromMillisecondsSinceEpoch(0);
@@ -316,11 +344,11 @@ class GoogleDriveProvider implements CloudStorageProvider {
         });
   }
 
-  /// Memoir item ids already in Drive, mapped to their Drive file ids. One
-  /// listing per folder replaces a lookup request for every uploaded item.
-  Future<Map<String, String>> backedUpItems() async {
+  /// Every Memoir item in Drive. One listing per folder replaces a lookup
+  /// request for every uploaded item.
+  Future<List<RemoteBackupItem>> backupItems() async {
     await _ensureFolderStructure();
-    final found = <String, String>{};
+    final found = <RemoteBackupItem>[];
     await Future.wait(
       _categoryFolders.values.map((folder) async {
         String? page;
@@ -331,7 +359,7 @@ class GoogleDriveProvider implements CloudStorageProvider {
                 queryParameters: {
                   'q': "'$folder' in parents and trashed = false",
                   'pageSize': '1000',
-                  'fields': 'nextPageToken,files(id,appProperties)',
+                  'fields': 'nextPageToken,files(id,name,mimeType,createdTime,appProperties)',
                   'pageToken': ?page,
                 },
               ),
@@ -341,16 +369,134 @@ class GoogleDriveProvider implements CloudStorageProvider {
           final decoded = jsonDecode(response.body) as Map<String, dynamic>;
           for (final value in decoded['files'] as List<dynamic>? ?? const []) {
             final file = value as Map<String, dynamic>;
-            final itemId =
-                (file['appProperties']
-                    as Map<String, dynamic>?)?['memoryVaultItemId'];
-            if (itemId is String) found[itemId] = file['id'] as String;
+            final properties = {
+              for (final MapEntry(:key, :value)
+                  in ((file['appProperties'] as Map<String, dynamic>?) ??
+                          const {})
+                      .entries)
+                key: '$value',
+            };
+            final itemId = properties['memoryVaultItemId'];
+            if (itemId == null) continue;
+            found.add(
+              RemoteBackupItem(
+                fileId: file['id'] as String,
+                itemId: itemId,
+                name: file['name'] as String? ?? itemId,
+                mimeType: file['mimeType'] as String? ?? '',
+                createdTime:
+                    DateTime.tryParse(file['createdTime'] as String? ?? '') ??
+                    DateTime.now(),
+                properties: properties,
+              ),
+            );
           }
           page = decoded['nextPageToken'] as String?;
         } while (page != null);
       }),
     );
     return found;
+  }
+
+  /// Memoir item ids already in Drive, mapped to their Drive file ids.
+  Future<Map<String, String>> backedUpItems() async {
+    final items = await backupItems();
+    missingRestoreInfo
+      ..clear()
+      ..addAll(
+        items
+            .where((item) => !item.properties.containsKey('mvCreatedAt'))
+            .map((item) => item.itemId),
+      );
+    return {for (final item in items) item.itemId: item.fileId};
+  }
+
+  /// Hidden details stored with each file so a restore can put it back in
+  /// its chat, album and date. Contents, names and folders are unchanged.
+  static Map<String, String> restoreProperties(
+    ArchiveItem item,
+    String? collectionName,
+  ) => {
+    'memoryVaultItemId': item.id,
+    'mvCollection': item.collection,
+    'mvCollectionName': ?_fitProperty('mvCollectionName', collectionName),
+    'mvType': item.type,
+    'mvCreatedAt': '${item.createdAt}',
+    'mvGroup': ?item.groupId,
+    'mvFlags': '${item.favorite ? 'f' : ''}${item.pinned ? 'p' : ''}',
+  };
+
+  /// Drive limits a property's key plus value to 124 bytes.
+  static String? _fitProperty(String key, String? value) {
+    if (value == null) return null;
+    var fitted = value;
+    while (utf8.encode(key).length + utf8.encode(fitted).length > 124) {
+      fitted = fitted.substring(0, fitted.length - 1);
+    }
+    return fitted;
+  }
+
+  /// Adds the restore details (and a playable media type) to a file that
+  /// was uploaded before they existed. Only metadata changes.
+  Future<void> updateRestoreInfo(
+    String fileId,
+    ArchiveItem item,
+    String? collectionName,
+  ) async {
+    await _authorizedRequest(
+      (token) => _client.patch(
+        Uri.parse('$_baseUrl/files/${Uri.encodeComponent(fileId)}'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json; charset=UTF-8',
+        },
+        body: jsonEncode({
+          'appProperties': restoreProperties(item, collectionName),
+          if (item.localPath != null) 'mimeType': _mimeTypeFor(item),
+        }),
+      ),
+    );
+    missingRestoreInfo.remove(item.id);
+  }
+
+  Future<Uint8List> downloadBytes(String remoteId) async {
+    final response = await _authorizedRequest(
+      (token) => _client.get(
+        Uri.parse('$_baseUrl/files/${Uri.encodeComponent(remoteId)}')
+            .replace(queryParameters: {'alt': 'media'}),
+        headers: {'Authorization': 'Bearer $token'},
+      ),
+    );
+    return response.bodyBytes;
+  }
+
+  /// The archive stores a file's extension; Drive needs a media type to
+  /// preview and play it.
+  static String _mimeTypeFor(ArchiveItem item) {
+    final stored = item.mimeType ?? '';
+    if (stored.contains('/')) return stored;
+    final ext = (stored.isNotEmpty ? stored : (item.filename ?? ''))
+        .split('.')
+        .last
+        .toLowerCase();
+    return switch (ext) {
+      'jpg' || 'jpeg' => 'image/jpeg',
+      'png' => 'image/png',
+      'gif' => 'image/gif',
+      'webp' => 'image/webp',
+      'heic' => 'image/heic',
+      'mp4' || 'm4v' => 'video/mp4',
+      'mov' => 'video/quicktime',
+      'mkv' => 'video/x-matroska',
+      'webm' => 'video/webm',
+      '3gp' => 'video/3gpp',
+      'mp3' => 'audio/mpeg',
+      'm4a' => 'audio/mp4',
+      'wav' => 'audio/wav',
+      'ogg' => 'audio/ogg',
+      'pdf' => 'application/pdf',
+      _ => 'application/octet-stream',
+    };
   }
 
   @override
@@ -405,6 +551,7 @@ class GoogleDriveProvider implements CloudStorageProvider {
     ArchiveItem item, {
     required String localFilePath,
     Map<String, String>? known,
+    String? collectionName,
   }) async {
     await _ensureFolderStructure();
     final hasLocalFile = localFilePath.isNotEmpty;
@@ -430,11 +577,7 @@ class GoogleDriveProvider implements CloudStorageProvider {
     final name = hasLocalFile
         ? (item.filename ?? File(localFilePath).uri.pathSegments.last)
         : 'memory-vault-${item.id}.json';
-    final mimeType = hasLocalFile
-        ? ((item.mimeType?.contains('/') ?? false)
-              ? item.mimeType!
-              : 'application/octet-stream')
-        : 'application/json';
+    final mimeType = hasLocalFile ? _mimeTypeFor(item) : 'application/json';
     final metadata = jsonEncode({
       'name': name,
       'mimeType': mimeType,
@@ -442,7 +585,7 @@ class GoogleDriveProvider implements CloudStorageProvider {
       'parents': [
         _categoryFolders[_categoryFor(item)] ?? _rootFolderId ?? 'root',
       ],
-      'appProperties': {'memoryVaultItemId': item.id},
+      'appProperties': restoreProperties(item, collectionName),
     });
 
     String? existingId = known?[item.id];

@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../main.dart';
+import '../l10n.dart';
 import '../security/app_lock.dart';
 
 class SettingsScreen extends StatelessWidget {
@@ -14,130 +15,148 @@ class SettingsScreen extends StatelessWidget {
       mode: LaunchMode.externalApplication,
     );
     if (!opened && context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Could not open this link.')),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(context.l10n.linkFailed)));
     }
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('Settings')),
-    body: ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        Card(
-          child: ListTile(
-            leading: const Icon(Icons.brightness_6_outlined),
-            title: const Text('Appearance'),
-            subtitle: const Text('Choose system, light, or dark theme'),
-            trailing: DropdownButton<ThemeMode>(
-              value: themeMode.value,
-              items: const [
-                DropdownMenuItem(
-                  value: ThemeMode.system,
-                  child: Text('System'),
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    return Scaffold(
+      appBar: AppBar(title: Text(l10n.settings)),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          Card(
+            child: ListTile(
+              leading: const Icon(Icons.brightness_6_outlined),
+              title: Text(l10n.appearance),
+              subtitle: Text(l10n.appearanceSubtitle),
+              trailing: DropdownButton<ThemeMode>(
+                value: themeMode.value,
+                items: [
+                  DropdownMenuItem(
+                    value: ThemeMode.system,
+                    child: Text(l10n.themeSystem),
+                  ),
+                  DropdownMenuItem(
+                    value: ThemeMode.light,
+                    child: Text(l10n.themeLight),
+                  ),
+                  DropdownMenuItem(
+                    value: ThemeMode.dark,
+                    child: Text(l10n.themeDark),
+                  ),
+                ],
+                onChanged: (value) {
+                  if (value != null) themeMode.value = value;
+                },
+              ),
+            ),
+          ),
+          Card(
+            child: ListTile(
+              leading: const Icon(Icons.translate_rounded),
+              title: Text(l10n.language),
+              trailing: DropdownButton<String?>(
+                value: appLocale.value?.languageCode,
+                items: [
+                  DropdownMenuItem(
+                    value: null,
+                    child: Text(l10n.languageSystem),
+                  ),
+                  for (final MapEntry(:key, :value) in appLanguages.entries)
+                    DropdownMenuItem(value: key, child: Text(value)),
+                ],
+                onChanged: setAppLocale,
+              ),
+            ),
+          ),
+          Card(
+            child: ValueListenableBuilder<bool>(
+              valueListenable: AppLock.instance.enabled,
+              builder: (context, enabled, _) => SwitchListTile(
+                secondary: const Icon(Icons.lock_outline_rounded),
+                title: Text(l10n.appLock),
+                subtitle: Text(l10n.appLockSubtitle),
+                value: enabled,
+                onChanged: (value) async {
+                  final error = await AppLock.instance.setEnabled(value);
+                  if (error != null && context.mounted) {
+                    ScaffoldMessenger.of(context)
+                        .showSnackBar(SnackBar(content: Text(error)));
+                  }
+                },
+              ),
+            ),
+          ),
+          Card(
+            child: ListTile(
+              leading: const Icon(Icons.add_to_drive_outlined),
+              title: Text(l10n.driveBackup),
+              subtitle: Text(l10n.driveBackupSubtitle),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => context.go('/cloud'),
+            ),
+          ),
+          Card(
+            child: ListTile(
+              leading: const Icon(Icons.storage_outlined),
+              title: Text(l10n.onDeviceArchive),
+              subtitle: Text(l10n.onDeviceArchiveSubtitle),
+            ),
+          ),
+          Card(
+            child: ListTile(
+              leading: const Icon(Icons.privacy_tip_outlined),
+              title: Text(l10n.privacy),
+              subtitle: Text(l10n.privacySubtitle),
+            ),
+          ),
+          Card(
+            child: Column(
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.person_outline_rounded),
+                  title: Text(l10n.developer),
+                  subtitle: const Text('Yassine Mahmoud'),
                 ),
-                DropdownMenuItem(value: ThemeMode.light, child: Text('Light')),
-                DropdownMenuItem(value: ThemeMode.dark, child: Text('Dark')),
+                const Divider(height: 1, indent: 56),
+                ListTile(
+                  leading: const Icon(
+                    Icons.facebook_rounded,
+                    color: Color(0xff1877f2),
+                  ),
+                  title: const Text('Facebook'),
+                  subtitle: Text(l10n.openProfile),
+                  trailing: const Icon(Icons.open_in_new_rounded, size: 18),
+                  onTap: () => _openSocialLink(
+                    context,
+                    'https://www.facebook.com/yassine.mahmoud.562',
+                  ),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.telegram, color: Color(0xff229ed9)),
+                  title: const Text('Telegram'),
+                  subtitle: const Text('‎@SatoruJogo'),
+                  trailing: const Icon(Icons.open_in_new_rounded, size: 18),
+                  onTap: () =>
+                      _openSocialLink(context, 'https://t.me/SatoruJogo'),
+                ),
               ],
-              onChanged: (value) {
-                if (value != null) themeMode.value = value;
-              },
             ),
           ),
-        ),
-        Card(
-          child: ValueListenableBuilder<bool>(
-            valueListenable: AppLock.instance.enabled,
-            builder: (context, enabled, _) => SwitchListTile(
-              secondary: const Icon(Icons.lock_outline_rounded),
-              title: const Text('App lock'),
-              subtitle: const Text(
-                "Unlock Memoir with your phone's PIN, pattern or fingerprint",
-              ),
-              value: enabled,
-              onChanged: (value) async {
-                final error = await AppLock.instance.setEnabled(value);
-                if (error != null && context.mounted) {
-                  ScaffoldMessenger.of(context)
-                      .showSnackBar(SnackBar(content: Text(error)));
-                }
-              },
+          const SizedBox(height: 16),
+          Center(
+            child: Text(
+              'Memoir · 1.1.0',
+              style: Theme.of(context).textTheme.labelMedium,
             ),
           ),
-        ),
-        Card(
-          child: ListTile(
-            leading: const Icon(Icons.add_to_drive_outlined),
-            title: const Text('Google Drive backup'),
-            subtitle: const Text(
-              'Connect your account to organize and browse your copies',
-            ),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => context.go('/cloud'),
-          ),
-        ),
-        const Card(
-          child: ListTile(
-            leading: Icon(Icons.storage_outlined),
-            title: Text('On-device archive'),
-            subtitle: Text(
-              'Your memories remain available offline on this device.',
-            ),
-          ),
-        ),
-        const Card(
-          child: ListTile(
-            leading: Icon(Icons.privacy_tip_outlined),
-            title: Text('Privacy'),
-            subtitle: Text(
-              'Imports happen only when you choose content to save. Memoir does not read messaging app databases.',
-            ),
-          ),
-        ),
-        Card(
-          child: Column(
-            children: [
-              const ListTile(
-                leading: Icon(Icons.person_outline_rounded),
-                title: Text('Developer'),
-                subtitle: Text('Yassine Mahmoud'),
-              ),
-              const Divider(height: 1, indent: 56),
-              ListTile(
-                leading: const Icon(
-                  Icons.facebook_rounded,
-                  color: Color(0xff1877f2),
-                ),
-                title: const Text('Facebook'),
-                subtitle: const Text('Open developer profile'),
-                trailing: const Icon(Icons.open_in_new_rounded, size: 18),
-                onTap: () => _openSocialLink(
-                  context,
-                  'https://www.facebook.com/yassine.mahmoud.562',
-                ),
-              ),
-              ListTile(
-                leading: const Icon(Icons.telegram, color: Color(0xff229ed9)),
-                title: const Text('Telegram'),
-                subtitle: const Text('@SatoruJogo'),
-                trailing: const Icon(Icons.open_in_new_rounded, size: 18),
-                onTap: () =>
-                    _openSocialLink(context, 'https://t.me/SatoruJogo'),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 16),
-        Center(
-          child: Text(
-            'Memoir · 1.0.0',
-            style: Theme.of(context).textTheme.labelMedium,
-          ),
-        ),
-      ],
-    ),
-    bottomNavigationBar: const VaultNavigation(location: '/settings'),
-  );
+        ],
+      ),
+      bottomNavigationBar: const VaultNavigation(location: '/settings'),
+    );
+  }
 }

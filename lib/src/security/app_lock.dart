@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../l10n.dart';
+
 /// Locks Memoir behind the phone's own screen lock: PIN, pattern, password,
 /// fingerprint or face, whatever the device uses.
 class AppLock {
@@ -16,6 +18,10 @@ class AppLock {
 
   final _auth = LocalAuthentication();
   final enabled = ValueNotifier(false);
+
+  /// Texts in the app's current language, kept up to date by [AppLockGate];
+  /// the lock prompt can open before any screen has a context.
+  AppLocalizations l10n = lookupAppLocalizations(const Locale('en'));
   final locked = ValueNotifier(false);
 
   Future<void> load() async {
@@ -28,22 +34,21 @@ class AppLock {
   Future<String?> authenticate(String reason) async {
     try {
       if (!await _auth.isDeviceSupported()) {
-        return 'Set a screen lock (PIN, pattern or fingerprint) on this phone first.';
+        return l10n.lockNeedsScreenLock;
       }
       final ok = await _auth.authenticate(
         localizedReason: reason,
         persistAcrossBackgrounding: true,
       );
-      return ok ? null : 'Not unlocked.';
+      return ok ? null : l10n.lockNotUnlocked;
     } on LocalAuthException catch (error) {
       return switch (error.code) {
-        LocalAuthExceptionCode.noCredentialsSet => 'Set a screen lock (PIN, pattern or fingerprint) on this phone first.',
+        LocalAuthExceptionCode.noCredentialsSet => l10n.lockNeedsScreenLock,
         LocalAuthExceptionCode.userCanceled ||
-        LocalAuthExceptionCode.systemCanceled => 'Not unlocked.',
+        LocalAuthExceptionCode.systemCanceled => l10n.lockNotUnlocked,
         LocalAuthExceptionCode.temporaryLockout ||
-        LocalAuthExceptionCode.biometricLockout =>
-          'Too many attempts. Try again later or use your PIN.',
-        _ => 'Could not unlock: ${error.code.name}',
+        LocalAuthExceptionCode.biometricLockout => l10n.lockTooManyAttempts,
+        _ => l10n.lockFailed(error.code.name),
       };
     }
   }
@@ -51,7 +56,7 @@ class AppLock {
   Future<String?> setEnabled(bool value) async {
     // Turning the lock on or off both require proving it is your phone.
     final error = await authenticate(
-      value ? 'Confirm to lock Memoir' : 'Confirm to remove the lock',
+      value ? l10n.lockConfirmEnable : l10n.lockConfirmDisable,
     );
     if (error != null) return error;
     final prefs = await SharedPreferences.getInstance();
@@ -61,7 +66,9 @@ class AppLock {
   }
 
   Future<void> unlock() async {
-    if (await authenticate('Unlock Memoir') == null) locked.value = false;
+    if (await authenticate(l10n.lockUnlockReason) == null) {
+      locked.value = false;
+    }
   }
 }
 
@@ -112,16 +119,19 @@ class _AppLockGateState extends State<AppLockGate> with WidgetsBindingObserver {
   }
 
   @override
-  Widget build(BuildContext context) => ValueListenableBuilder<bool>(
-    valueListenable: _lock.locked,
-    builder: (context, locked, child) => Stack(
-      children: [
-        child!,
-        if (locked) const Positioned.fill(child: _LockScreen()),
-      ],
-    ),
-    child: widget.child,
-  );
+  Widget build(BuildContext context) {
+    _lock.l10n = context.l10n;
+    return ValueListenableBuilder<bool>(
+      valueListenable: _lock.locked,
+      builder: (context, locked, child) => Stack(
+        children: [
+          child!,
+          if (locked) const Positioned.fill(child: _LockScreen()),
+        ],
+      ),
+      child: widget.child,
+    );
+  }
 }
 
 class _LockScreen extends StatelessWidget {
@@ -148,17 +158,17 @@ class _LockScreen extends StatelessWidget {
               ),
               const SizedBox(height: 20),
               Text(
-                'Memoir is locked',
+                context.l10n.lockedTitle,
                 style: Theme.of(context).textTheme.titleLarge
                     ?.copyWith(fontWeight: FontWeight.w700),
               ),
               const SizedBox(height: 8),
-              const Text('Use your phone\'s PIN, pattern or fingerprint'),
+              Text(context.l10n.lockedSubtitle),
               const SizedBox(height: 24),
               FilledButton.icon(
                 onPressed: AppLock.instance.unlock,
                 icon: const Icon(Icons.fingerprint),
-                label: const Text('Unlock'),
+                label: Text(context.l10n.unlock),
               ),
             ],
           ),

@@ -3,8 +3,10 @@ import 'dart:ui';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 import 'package:workmanager/workmanager.dart';
 
 import 'src/archive/archive_controller.dart';
@@ -17,6 +19,7 @@ import 'src/screens/archive_screen.dart';
 import 'src/screens/chat_screen.dart';
 import 'src/screens/cloud_screen.dart';
 import 'src/screens/settings_screen.dart';
+import 'src/l10n.dart';
 import 'src/security/app_lock.dart';
 
 final repositoryProvider = Provider<ArchiveRepository>(
@@ -39,6 +42,7 @@ Future<void> main() async {
     await Workmanager().initialize(memoryVaultBackgroundDispatcher);
   }
   await AppLock.instance.load();
+  await loadAppLocale();
   runApp(const ProviderScope(child: MemoryVaultApp()));
   // Not awaited: a catch-up backup must not delay the first screen.
   unawaited(resumeAutomaticBackup().catchError((Object _) {}));
@@ -69,7 +73,7 @@ class MemoryVaultApp extends StatelessWidget {
         path: '/chat/:id',
         builder: (_, state) => ChatScreen(
           collectionId: state.pathParameters['id']!,
-          name: state.extra as String? ?? 'Chat',
+          name: state.extra as String?,
         ),
       ),
       GoRoute(path: '/cloud', builder: (_, _) => const CloudScreen()),
@@ -78,17 +82,28 @@ class MemoryVaultApp extends StatelessWidget {
   );
 
   @override
-  Widget build(BuildContext context) => ValueListenableBuilder<ThemeMode>(
-    valueListenable: themeMode,
-    builder: (context, mode, _) => MaterialApp.router(
+  Widget build(BuildContext context) => ListenableBuilder(
+    listenable: Listenable.merge([themeMode, appLocale]),
+    builder: (context, _) => MaterialApp.router(
       title: 'Memoir',
       debugShowCheckedModeBanner: false,
-      themeMode: mode,
+      themeMode: themeMode.value,
       theme: _theme(Brightness.light),
       darkTheme: _theme(Brightness.dark),
       routerConfig: _router,
-      builder: (context, child) => AppLockGate(child: child!),
-      supportedLocales: const [Locale('en'), Locale('ar')],
+      locale: appLocale.value,
+      localizationsDelegates: const [
+        AppLocalizations.delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: AppLocalizations.supportedLocales,
+      builder: (context, child) {
+        // Dates and times follow the app's language.
+        Intl.defaultLocale = Localizations.localeOf(context).languageCode;
+        return AppLockGate(child: child!);
+      },
     ),
   );
 
@@ -135,18 +150,18 @@ class VaultNavigation extends StatelessWidget {
       selectedIndex: index,
       onDestinationSelected: (i) =>
           context.go(['/archive', '/cloud', '/settings'][i]),
-      destinations: const [
+      destinations: [
         NavigationDestination(
-          icon: Icon(Icons.chat_bubble_outline_rounded),
-          label: 'Memories',
+          icon: const Icon(Icons.chat_bubble_outline_rounded),
+          label: context.l10n.navMemories,
         ),
         NavigationDestination(
-          icon: Icon(Icons.add_to_drive_outlined),
-          label: 'Google Drive',
+          icon: const Icon(Icons.add_to_drive_outlined),
+          label: context.l10n.navDrive,
         ),
         NavigationDestination(
-          icon: Icon(Icons.settings_outlined),
-          label: 'Settings',
+          icon: const Icon(Icons.settings_outlined),
+          label: context.l10n.navSettings,
         ),
       ],
     );
