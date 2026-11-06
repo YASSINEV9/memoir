@@ -37,11 +37,23 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     _reload();
   }
 
+  ScaffoldMessengerState? _messenger;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _messenger = ScaffoldMessenger.maybeOf(context);
+  }
+
   @override
   void dispose() {
+    // Its Undo belongs to this chat; it should not follow to other screens.
+    if (_undoShown) _messenger?.hideCurrentSnackBar();
     _composer.dispose();
     super.dispose();
   }
+
+  bool _undoShown = false;
 
   Future<void> _reload() async {
     final items = await ref
@@ -187,20 +199,23 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         await repo.moveToTrash(item);
         await _changed();
         if (!mounted) return;
+        _undoShown = true;
         ScaffoldMessenger.of(context)
           ..hideCurrentSnackBar()
           ..showSnackBar(
             SnackBar(
               content: Text(l10n.movedToTrash),
+              // A SnackBar with an action otherwise stays until closed.
+              persist: false,
               action: SnackBarAction(
                 label: l10n.undo,
                 onPressed: () async {
                   await repo.restoreFromTrash(item);
-                  await _changed();
+                  if (mounted) await _changed();
                 },
               ),
             ),
-          );
+          ).closed.then((_) => _undoShown = false);
         return;
     }
     await _changed();

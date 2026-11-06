@@ -29,6 +29,9 @@
 - **11 لغة:** العربية، الإنجليزية، الفرنسية، الإسبانية، البرتغالية، الألمانية، الروسية، الصينية، اليابانية، الهندية، التركية، مع اختيار اللغة من الإعدادات.
 - **تشغيل الفيديو** داخل التطبيق، أو فتحه بتطبيق آخر، أو في Google Drive.
 - **الاسترجاع بعد إعادة التثبيت:** سجّل الدخول بنفس الحساب، فيجد Memoir نسختك في Drive ويعيد كل رسالة وصورة وفيديو إلى محادثتها.
+- **نسخ إلى عدة حسابات Google (أندرويد):** أضف حسابين أو ثلاثة أو أكثر، فتُنسخ كل رسالة وصورة إلى كل حساب. إذا فقدت أحد الحسابات تبقى نسختك في الآخر.
+- **المحذوفات مؤخرًا:** ما تحذفه يبقى 30 يومًا ويمكن استرجاعه، مع زر «تراجع» فور الحذف.
+- **المشاركة إلى Memoir:** من أي تطبيق اضغط «مشاركة» ثم Memoir، واختر المحادثة التي تحفظ فيها النص أو الصور أو الملفات.
 - **كل مستخدم يستعمل حسابه:** سجّل الدخول بحساب Gmail الخاص بك، فتُحفظ نسختك في مجلد `Memoir` داخل Google Drive الخاص بك أنت فقط.
 
 **ملاحظة عند تسجيل الدخول بجوجل:** إذا ظهرت رسالة «Google hasn't verified this app»، اضغط **Advanced** ثم **Go to Memory Vault**. التطبيق لا يرى إلا الملفات التي أنشأها هو في Drive الخاص بك.
@@ -62,6 +65,9 @@
 - 11 languages (Arabic, English, French, Spanish, Portuguese, German, Russian, Chinese, Japanese, Hindi, Turkish) with an in-app picker
 - In-app video player, plus open with another app or in Google Drive
 - Restore after reinstalling: sign in with the same account and Memoir puts everything back in its chats
+- Back up to several Google accounts at once (Android), so losing one account does not lose your archive
+- Recently deleted: deleted items are kept for 30 days, with Undo right after deleting
+- Share to Memoir from any app (text, photos, videos, files) and pick the chat to save into
 - Each user signs in with their own Google account and gets their own `Memoir` folder in their own Drive
 - Search, pin, favorite, copy and delete
 - No server, ads, analytics or tracking. See [PRIVACY.md](PRIVACY.md)
